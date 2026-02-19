@@ -1,0 +1,2388 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Calculateur de bolus — Version complète avec aliments</title>
+  
+  <!-- Modules de gestion des aliments et optimisation -->
+  <script src="food-database.js"></script>
+  <script src="bolus-optimizer.js"></script>
+  <script src="food-search-ui.js"></script>
+  
+  <!-- Mode simple : Wizard de composition guidée -->
+  <script src="simple-mode-data.js"></script>
+  <script src="simple-mode-wizard.js"></script>
+  
+  <style>
+    :root{
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.70);
+      --border: rgba(255,255,255,0.12);
+      --accent: #6ee7ff;
+      --accent2: #a78bfa;
+      --good: #34d399;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --cool: #60a5fa;
+      --shadow: 0 18px 60px rgba(0,0,0,0.35);
+      --radius: 20px;
+      --focus: 0 0 0 3px rgba(110,231,255,0.35);
+      color-scheme: dark;
+    }
+    :root[data-theme="clair"]{
+      --bg: #f0f2f5;
+      --panel: rgba(0,0,0,0.12);
+      --panel2: rgba(0,0,0,0.16);
+      --text: rgba(0,0,0,0.95);
+      --muted: rgba(0,0,0,0.72);
+      --border: rgba(0,0,0,0.25);
+      --accent: #0284c7;
+      --accent2: #6d28d9;
+      --good: #047857;
+      --warn: #c2410c;
+      --bad: #dc2626;
+      --cool: #1d4ed8;
+      --shadow: 0 18px 60px rgba(0,0,0,0.25);
+      color-scheme: light;
+    }
+
+    *{ box-sizing:border-box; }
+    html{ 
+      height: 100%;
+    }
+    body{ 
+      display:flex; 
+      flex-direction:column; 
+      align-items:center;
+      min-height: 100vh; /* Couvre toute la hauteur de la fenêtre */
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:
+        radial-gradient(1100px 520px at 14% 0%, rgba(167,139,250,0.20), transparent 60%),
+        radial-gradient(900px 500px at 85% 15%, rgba(110,231,255,0.16), transparent 60%),
+        var(--bg);
+      background-attachment: fixed; /* Background fixe, ne défile pas */
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .skip{
+      position:absolute; left:-999px; top:0;
+      background: var(--text); color: var(--bg);
+      padding:10px 12px; border-radius: 14px;
+      z-index: 9999;
+    }
+    .skip:focus{ left:12px; top:12px; outline:none; }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    @media (max-width:720px){
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .logo{
+      width: 48px;
+      height: 48px;
+      display:grid;
+      place-items:center;
+      border-radius: 16px;
+      
+      box-shadow: var(--shadow);
+      flex: 0 0 auto;
+    }
+    h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sub{
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .btn{
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 12px;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      font-weight: 800;
+    }
+    :root[data-theme="clair"] .btn{
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.25);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:focus{ outline:none; box-shadow: var(--focus); }
+    .btn-ghost{ background: transparent; }
+    .btn[aria-pressed="true"]{
+      /* default pressed state */
+      border-color: rgba(110,231,255,0.45);
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+    }
+    .btn[disabled]{ opacity:0.55; cursor:not-allowed; transform:none; }
+    .btn-error{ border-color:#fb7185 !important; box-shadow:0 0 0 2px rgba(251,113,133,0.4); }
+
+    .card{
+      background: linear-gradient(180deg, var(--panel), transparent 140%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    :root[data-theme="clair"] .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85) 140%);
+      border-color: rgba(0,0,0,0.20);
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+
+    .pillbar{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items:center;
+      justify-content: center; /* Centré */
+    }
+    .pills{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items:center;
+      justify-content: center; /* Centré */
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      font-size: 13px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    /* Texte des labels (Glycémie, Glucides, Objectif) */
+    .pill-label {
+      display: inline; /* Visible par défaut */
+    }
+    
+    /* Mode mobile : cacher les labels, garder icône + valeur */
+    @media (max-width: 500px) {
+      .pill-label {
+        display: none; /* Cache "Glycémie", "Glucides", "Objectif" */
+      }
+      
+      .pill {
+        padding: 6px 10px; /* Padding réduit */
+        font-size: 12px; /* Police légèrement plus petite */
+      }
+    }
+    
+    :root[data-theme="clair"] .pill{
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.20);
+    }
+    .pill strong{ color: var(--text); }
+
+    .dotGly{
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+      flex: 0 0 auto;
+    }
+    .dotGly.cool{ background: var(--cool); border-color: rgba(96,165,250,0.55); box-shadow: 0 0 0 3px rgba(96,165,250,0.14); }
+    .dotGly.good{ background: var(--good); border-color: rgba(52,211,153,0.55); box-shadow: 0 0 0 3px rgba(52,211,153,0.14); }
+    .dotGly.warn{ background: var(--warn); border-color: rgba(251,191,36,0.60); box-shadow: 0 0 0 3px rgba(251,191,36,0.14); }
+    .dotGly.bad{  background: var(--bad);  border-color: rgba(251,113,133,0.60); box-shadow: 0 0 0 3px rgba(251,113,133,0.14); }
+
+    .input-error{ border-color: rgba(251,113,133,0.65) !important; box-shadow: 0 0 0 3px rgba(251,113,133,0.18) !important; }
+    
+    /* Effet néon pour les champs obligatoires non remplis */
+    input[type="number"].input-required-empty{
+      border-color: rgba(110,231,255,0.85);
+      box-shadow:
+        0 0 0 2px rgba(110,231,255,0.22),
+        0 0 18px rgba(110,231,255,0.35),
+        0 0 32px rgba(37,99,235,0.15);
+      animation: pulseNeon 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulseNeon {
+      0%, 100% { 
+        box-shadow:
+          0 0 0 2px rgba(110,231,255,0.22),
+          0 0 18px rgba(110,231,255,0.35),
+          0 0 32px rgba(37,99,235,0.15);
+      }
+      50% { 
+        box-shadow:
+          0 0 0 2px rgba(110,231,255,0.30),
+          0 0 22px rgba(110,231,255,0.45),
+          0 0 40px rgba(37,99,235,0.22);
+      }
+    }
+    
+    .alertBanner{
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(251,113,133,0.35);
+      background: rgba(251,113,133,0.10);
+      color: var(--text);
+      font-weight: 900;
+      display:none;
+    }
+    .alertBanner.show{ display:block; }
+    .alertBanner span{ color: var(--muted); font-weight: 800; }
+
+    .row2{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 520px){
+      .row2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 6px;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    
+    /* Labels agrandis pour les champs principaux */
+    .label-large {
+      font-size: 16px !important; /* Augmenté de 12px à 16px */
+      font-weight: 900;
+      color: var(--text) !important;
+    }
+    
+    .label-large .label-icon {
+      font-size: 24px; /* Icônes plus grandes */
+      line-height: 1;
+    }
+    
+    input[type="number"], select{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      outline: none;
+      font-size: 16px;
+    }
+    :root[data-theme="clair"] input[type="number"],
+    :root[data-theme="clair"] select{
+      background: rgba(255,255,255,0.90);
+      border-color: rgba(0,0,0,0.25);
+    }
+
+    /* Erreurs de champ sans décalage */
+    .fieldLine{ display:flex; flex-direction:column; gap:6px; }
+    .fieldError{ height: 18px; line-height:18px; font-size:12px; font-weight:900; color: var(--bad);
+      visibility:hidden; white-space: nowrap; overflow: hidden; }
+    .fieldError.show{ visibility:visible; }
+
+    input[type="number"]:focus, select:focus{
+      box-shadow: var(--focus);
+      border-color: rgba(110,231,255,0.55);
+    }
+    select option{ background: var(--bg); color: var(--text); }
+
+
+    .results{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+      transition: grid-template-columns 0.4s ease;
+    }
+    
+    /* Mode simple : 1 colonne (total seul) */
+    body.simple-mode .results {
+      grid-template-columns: 1fr;
+    }
+    
+    /* Mode simple avec détails : 3 colonnes */
+    body.simple-mode.show-bolus-details .results {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    
+    /* Mode initié : toujours 3 colonnes sur desktop */
+    @media (min-width: 520px){
+      body:not(.simple-mode) .results { 
+        grid-template-columns: 1fr 1fr 1fr; 
+      }
+      .results.simple{ 
+        grid-template-columns: 1fr; 
+      }
+    }
+    
+    /* Mobile : toujours 1 colonne */
+    @media (max-width: 519px){
+      .results { 
+        grid-template-columns: 1fr !important; 
+      }
+    }
+    .res{ text-align:center;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .res.total{
+      border-color: rgba(110,231,255,0.45);
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+    }
+    .res .k{ font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .res .v{ font-size: 22px; font-weight: 950; font-variant-numeric: tabular-nums; }
+    .res.total .v{ font-size: 30px; letter-spacing: 0.2px; }
+
+    .miniBadges{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      align-items:center;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    :root[data-theme="clair"] .badge{ background: rgba(0,0,0,0.03); }
+    .badge strong{ color: var(--text); }
+
+    .status{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      min-height: 52px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      text-align:center;
+    }
+    .status.ok{ border-style: solid; border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.14); font-weight: 950; color: var(--text); }
+    .statusIcon{ font-size: 18px; line-height: 1; flex: 0 0 auto; }
+    .statusText{ font-weight: inherit; }
+
+    .status.warn{ border-style: solid; border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.16); font-weight: 950; color: var(--text); }
+    .status.bad{ border-style: solid; border-color: rgba(251,113,133,0.35); }
+    .status.info{ border-style: solid; border-color: rgba(110,231,255,0.45); background: rgba(110,231,255,0.16); font-weight: 950; color: var(--text); }
+
+    details{
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    summary{ cursor:pointer; color: var(--text); font-weight: 950; }
+
+    .metrics{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .metric{
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .metric .k{ font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+    .metric .v{ font-size: 20px; font-weight: 950; font-variant-numeric: tabular-nums; }
+
+    .hidden{ display:none !important; }
+
+    /* Bouton toggle détails bolus (mode simple) */
+    .toggle-details-btn {
+      position: absolute;
+      left: -48px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    
+    .toggle-details-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      transform: translateY(-50%) scale(1.1);
+    }
+    
+    /* Cache le bouton sur petit écran */
+    @media (max-width: 768px) {
+      .toggle-details-btn {
+        left: 8px;
+        top: -20px;
+        transform: translateY(0);
+      }
+      
+      .toggle-details-btn:hover {
+        transform: translateY(0) scale(1.1);
+      }
+    }
+    
+    /* Détails bolus (Correction + Repas) */
+    .bolus-detail {
+      opacity: 1;
+      transition: opacity 0.4s ease;
+    }
+    
+    /* Mode simple : détails cachés par défaut */
+    body.simple-mode .bolus-detail {
+      display: none !important;
+      opacity: 0;
+    }
+    
+    /* Mode simple avec détails affichés */
+    body.simple-mode.show-bolus-details .bolus-detail {
+      display: block !important;
+      opacity: 1 !important;
+      animation: fadeIn 0.4s ease;
+    }
+    
+    /* Animation d'apparition en fondu */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    /* Mode initié : détails toujours visibles */
+    body:not(.simple-mode) .bolus-detail {
+      display: block;
+      opacity: 1;
+    }
+    
+    /* Verrouillage temporaire des zones de calcul pendant l'édition des ratios */
+    body.editing-ratios #panelFast{
+      opacity: 0.35;
+      pointer-events: none;
+      user-select: none;
+      filter: saturate(0.9);
+    }
+    body.editing-ratios #panelFast * { pointer-events: none; }
+    
+    footer{
+      color: var(--muted);
+      font-size: 12px;
+      padding: 4px 2px 14px;
+      text-align:center;
+    }
+  
+    header{
+      max-width:980px;
+      margin:0 auto 24px auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+    }
+    .headerLeft{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-width:0;
+      text-align:left;
+    }
+    .titleBlock{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .headerRight{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    @media (max-width:720px){
+      header{ flex-direction:column; align-items:center; text-align:center; }
+      .headerLeft{ justify-content:center; text-align:center; }
+      .headerRight{ justify-content:center; }
+    }
+
+    /* Mode simple SANS détails : on affiche uniquement le total */
+    body.simple-mode:not(.show-bolus-details) #corrFastBox,
+    body.simple-mode:not(.show-bolus-details) #repasFastBox,
+    body.simple-mode #ratioBadgesFast{
+      display:none !important;
+    }
+    
+    /* Mode simple : classe générale pour cacher des éléments */
+    body.simple-mode .hide-in-simple {
+      display: none !important;
+    }
+    
+    /* Mode avancé : cacher les éléments réservés au mode simple */
+    body:not(.simple-mode) .hide-in-advanced {
+      display: none !important;
+    }
+    
+    /* En mode simple SANS détails, le total prend toute la largeur */
+    body.simple-mode:not(.show-bolus-details) #resultsFastGrid{
+      grid-template-columns: 1fr !important;
+    }
+    
+    /* ===== INTERFACE RECHERCHE ALIMENTS ===== */
+    
+    /* Masquer en mode simple */
+    body.simple-mode #foodSearchToggle,
+    body.simple-mode #foodSearchPanel{
+      display:none !important;
+    }
+    
+    .foodSearchToggle{
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      border: 2px dashed rgba(110,231,255,0.35);
+      border-radius: 16px;
+      color: var(--text);
+      font-weight: 900;
+      cursor: pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      margin: 12px 0;
+      transition: all 0.2s ease;
+    }
+    .foodSearchToggle:hover{
+      background: linear-gradient(135deg, rgba(110,231,255,0.18), rgba(167,139,250,0.14));
+      border-color: rgba(110,231,255,0.55);
+    }
+    .foodSearchToggle.active{
+      background: linear-gradient(135deg, rgba(110,231,255,0.22), rgba(167,139,250,0.18));
+      border-style: solid;
+      border-color: rgba(110,231,255,0.65);
+    }
+    
+    #foodSearchPanel{
+      margin-top: 12px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    
+    .searchBox{
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .searchBox input{
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px;
+    }
+    :root[data-theme="clair"] .searchBox input{
+      background: rgba(255,255,255,0.90);
+      border-color: rgba(0,0,0,0.25);
+    }
+    .searchBox input:focus{
+      outline: none;
+      border-color: rgba(110,231,255,0.55);
+      box-shadow: 0 0 0 3px rgba(110,231,255,0.15);
+    }
+    .searchIcon{
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      opacity: 0.5;
+    }
+    
+    .searchResults{
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      background: var(--panel2);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .searchResults:empty{ display: none; }
+    
+    .foodItem{
+      padding: 10px 12px;
+      margin: 4px 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid transparent;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    :root[data-theme="clair"] .foodItem{
+      background: rgba(255,255,255,0.7);
+    }
+    .foodItem:hover{
+      background: rgba(110,231,255,0.12);
+      border-color: rgba(110,231,255,0.35);
+    }
+    .foodItem .info{
+      flex: 1;
+    }
+    .foodItem .name{
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .foodItem .meta{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .foodItem .add{
+      padding: 6px 12px;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 900;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .myPlate{
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .myPlate h4{
+      margin: 0 0 10px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .plateEmpty{
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    
+    .plateItem{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    :root[data-theme="clair"] .plateItem{
+      background: rgba(255,255,255,0.7);
+    }
+    .plateItem .itemInfo{
+      flex: 1;
+      min-width: 0;
+    }
+    .plateItem .itemName{
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    .plateItem .itemMeta{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .plateItem input{
+      width: 70px;
+      padding: 6px 8px;
+      text-align: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .plateItem button{
+      padding: 6px 10px;
+      background: var(--bad);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    
+    .plateSummary{
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      border: 1px solid rgba(110,231,255,0.35);
+      border-radius: 12px;
+    }
+    .plateSummary .summaryGrid{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .plateSummary .summaryItem{
+      text-align: center;
+    }
+    .plateSummary .summaryLabel{
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .plateSummary .summaryValue{
+      font-size: 20px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .plateSummary .timingSuggestion{
+      padding: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+    :root[data-theme="clair"] .plateSummary .timingSuggestion{
+      background: rgba(255,255,255,0.5);
+    }
+    
+    .validateMealBtn{
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      background: var(--good);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .validateMealBtn:hover{
+      background: #059669;
+    }
+    .validateMealBtn:disabled{
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* ===== MODE SIMPLE : WIZARD DE COMPOSITION DE REPAS ===== */
+    
+    /* Container principal - largeur fixe pour cohérence */
+    
+    /* ==================== WIZARD MODAL ==================== */
+    
+    /* Overlay (fond semi-transparent) */
+    #wizardOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    #wizardOverlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+    
+    /* Panneau modal du wizard */
+    #wizardModal {
+      background: var(--bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: scale(0.95) translateY(20px);
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+    
+    #wizardOverlay.show #wizardModal {
+      transform: scale(1) translateY(0);
+    }
+    
+    /* Bouton de fermeture */
+    .wizardCloseBtn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+    
+    .wizardCloseBtn:hover {
+      background: var(--panel2);
+      border-color: rgba(110,231,255,0.55);
+      color: var(--text);
+      transform: scale(1.05);
+    }
+    
+    #simpleModeContainer {
+      padding: 20px;
+      width: 100%;
+    }
+    
+    /* Header du wizard */
+    .wizardHeader {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .wizardProgress {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    
+    .wizardHeader h2 {
+      font-size: 24px;
+      font-weight: 950;
+      margin: 0 0 8px 0;
+    }
+    
+    .wizardHeader p {
+      font-size: 16px;
+      color: var(--muted);
+      margin: 0;
+    }
+    
+    /* Grille de choix de type de repas */
+    .repasTypeGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    @media (min-width: 600px) {
+      .repasTypeGrid {
+        display: flex;  /* Utiliser flex au lieu de grid */
+        justify-content: space-between;  /* Espacement égal */
+        gap: 0;  /* Pas de gap, space-between gère */
+        max-width: 720px;  /* Légèrement augmenté */
+        width: 100%;
+      }
+      
+      .repasTypeCard {
+        flex: 0 0 166px;  /* Largeur fixe 166px */
+      }
+    }
+    
+    .repasTypeCard {
+      background: linear-gradient(135deg, var(--panel), var(--panel2));
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 24px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      /* Pas de max-width ni margin - la grille gère tout */
+    }
+    
+    .repasTypeCard:hover {
+      border-color: rgba(110,231,255,0.55);
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      transform: translateY(-2px);
+    }
+    
+    .repasTypeEmoji {
+      font-size: 56px;  /* Réduit de 64px à 56px */
+      line-height: 1;
+    }
+    
+    .repasTypeName {
+      font-size: 13px;
+      font-weight: 950;
+      color: var(--text);
+      line-height: 1.3;
+      min-height: 34px;  /* Hauteur fixe pour 2 lignes */
+      max-height: 34px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;  /* Limite à 2 lignes */
+      -webkit-box-orient: vertical;
+    }
+    
+    /* ==================== SÉLECTIONS ACTUELLES (SIMPLIFIÉ) ==================== */
+    
+    .selectionsActuelles {
+      margin-bottom: 20px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .selectionsContainer {
+      background: rgba(110,231,255,0.08);
+      border: 1px solid rgba(110,231,255,0.35);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    /* Message si aucun aliment */
+    .selectionsEmpty {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--muted);
+      font-style: italic;
+      text-align: center;
+      padding: 12px 16px;
+    }
+    
+    /* Liste des aliments sélectionnés */
+    .selectionsItems {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.6;
+      padding: 12px 16px;
+    }
+    
+    /* Total de glucides (compact, juste le chiffre) */
+    .selectionsTotalGlucides {
+      background: rgba(110,231,255,0.15);
+      padding: 8px 16px;
+      font-size: 16px;
+      font-weight: 950;
+      color: var(--accent);
+      text-align: center;
+      border-top: 1px solid rgba(110,231,255,0.25);
+    }
+    
+    /* ==================== FIN SÉLECTIONS ==================== */
+    
+    /* Grille d'aliments - AVEC SCROLL (2 lignes max) */
+    .alimentsGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+      max-width: 500px;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      
+      /* NOUVEAU : Limiter à 2 lignes avec scroll */
+      max-height: 270px; /* 2 lignes complètes : 2×110 + 12 (gap) + 24 (padding) + marge */
+      overflow-y: auto;
+      padding: 12px; /* Padding égal partout */
+      
+      /* Scrollbar style */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(110,231,255,0.4) transparent;
+    }
+    
+    /* Scrollbar custom pour WebKit (Chrome, Safari) */
+    .alimentsGrid::-webkit-scrollbar {
+      width: 6px; /* Réduit à 6px pour être plus discret */
+    }
+    
+    .alimentsGrid::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .alimentsGrid::-webkit-scrollbar-thumb {
+      background: rgba(110,231,255,0.4);
+      border-radius: 3px;
+    }
+    
+    .alimentsGrid::-webkit-scrollbar-thumb:hover {
+      background: rgba(110,231,255,0.6);
+    }
+    
+    @media (min-width: 600px) {
+      .alimentsGrid {
+        /* 4 colonnes avec cartes plus petites et espacements égaux */
+        grid-template-columns: repeat(4, 1fr);
+        max-width: 720px;
+        width: 720px;
+        gap: 12px;
+        padding: 12px; /* Espacement égal partout */
+        max-height: 270px; /* 2 lignes complètes */
+      }
+    }
+    
+    .alimentCard {
+      position: relative;
+      background: var(--panel2);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 6px; /* Réduit légèrement */
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px; /* Réduit légèrement */
+      min-height: 110px; /* Réduit de 120px à 110px */
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .alimentCard:hover {
+      border-color: rgba(110,231,255,0.55);
+      background: rgba(110,231,255,0.08);
+      transform: translateY(-2px);
+    }
+    
+    .alimentCard.selected {
+      border-color: var(--good);
+      background: rgba(52,211,153,0.12);
+    }
+    
+    .alimentEmoji {
+      font-size: 40px;  /* Réduit de 48px à 40px */
+      line-height: 1;
+    }
+    
+    .alimentNom {
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      color: var(--text);
+      line-height: 1.3;
+      min-height: 31px;  /* Hauteur fixe pour 2 lignes (12px * 1.3 * 2) */
+      max-height: 31px;  /* Force la hauteur */
+      overflow: hidden;  /* Cache le texte qui dépasse */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;  /* Limite à 2 lignes */
+      -webkit-box-orient: vertical;
+      word-break: break-word;  /* Force la coupure des mots longs */
+      overflow-wrap: break-word;  /* Fallback */
+      width: 100%;  /* Prend toute la largeur disponible */
+      max-width: 100%;  /* Ne dépasse jamais 100% */
+    }
+    
+    .alimentGlucides {
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .alimentCheck {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: var(--good);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    
+    /* Cartes spéciales */
+    .alimentCardPlus {
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      border-style: dashed;
+    }
+    
+    .alimentCardPlus:hover {
+      border-style: solid;
+    }
+    
+    .alimentCardNone {
+      background: rgba(251,113,133,0.08);
+      border-color: rgba(251,113,133,0.35);
+    }
+    
+    .alimentCardNone:hover {
+      background: rgba(251,113,133,0.12);
+      border-color: rgba(251,113,133,0.55);
+    }
+    
+    /* Navigation */
+    .wizardNavigation {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      max-width: 700px;  /* Réduit de 800px */
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .btnPrimary, .btnSecondary {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    
+    .btnPrimary {
+      background: var(--good);
+      color: white;
+      flex: 1;
+      min-width: 120px;
+    }
+    
+    .btnPrimary:hover {
+      background: #059669;
+    }
+    
+    .btnPrimary.btnLarge {
+      padding: 16px 32px;
+      font-size: 16px;
+    }
+    
+    .btnSecondary {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    
+    .btnSecondary:hover {
+      border-color: rgba(110,231,255,0.55);
+      background: rgba(110,231,255,0.08);
+    }
+    
+    /* Total en bas */
+    .wizardTotal {
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      border: 1px solid rgba(110,231,255,0.35);
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      max-width: 700px;  /* Réduit de 800px */
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    /* Récapitulatif */
+    .recapRepas {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      max-width: 700px;  /* Réduit de 800px */
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .recapRepas h3 {
+      font-size: 20px;
+      font-weight: 950;
+      margin: 0 0 20px 0;
+      text-align: center;
+    }
+    
+    .recapSection {
+      margin-bottom: 16px;
+    }
+    
+    .recapSectionTitle {
+      font-size: 14px;
+      font-weight: 950;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    
+    .recapItem {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--panel2);
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    
+    .recapGlucides {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+    
+    /* Zone des totaux réorganisée */
+    .recapTotaux {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 20px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    /* Ligne des 2 blocs (glucides + IG) */
+    .recapTotalItems {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    /* Bloc individuel (glucides ou IG) */
+    .recapTotalItem {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 16px;
+      border-radius: 16px;
+      border: 1px solid;
+    }
+    
+    /* Bloc Glucides (violet) */
+    .recapTotalItem.glucides {
+      background: rgba(167, 139, 250, 0.15); /* Violet transparent */
+      border-color: rgba(167, 139, 250, 0.4);
+    }
+    
+    /* Bloc IG (rose) */
+    .recapTotalItem.ig {
+      background: rgba(244, 114, 182, 0.15); /* Rose transparent */
+      border-color: rgba(244, 114, 182, 0.4);
+    }
+    
+    .recapTotalLabel {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .recapTotalLabel .emoji {
+      font-size: 24px;
+    }
+    
+    .recapTotalValue {
+      font-size: 48px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    
+    /* Bloc Conseil (sous les totaux) */
+    .recapConseil {
+      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
+      border: 1px solid rgba(110,231,255,0.35);
+      padding: 16px 20px;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.4;
+    }
+    
+    .recapConseil .icon {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+    
+    /* Responsive : empiler les blocs sur mobile */
+    @media (max-width: 600px) {
+      .recapTotalItems {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    :root[data-theme="clair"] .recapConseil {
+      background: rgba(255,255,255,0.5);
+    }
+    
+    :root[data-theme="clair"] .recapTotalItem.glucides {
+      background: rgba(167, 139, 250, 0.25);
+    }
+    
+    :root[data-theme="clair"] .recapTotalItem.ig {
+      background: rgba(244, 114, 182, 0.25);
+    }
+    
+    /* Accordéon pour la liste des aliments */
+    .recapAccordeon {
+      margin-bottom: 20px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .recapAccordeonBtn {
+      width: 100%;
+      padding: 14px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .recapAccordeonBtn:hover {
+      border-color: rgba(110,231,255,0.55);
+      background: rgba(110,231,255,0.08);
+    }
+    
+    #recapAccordeonIcon {
+      font-size: 12px;
+      transition: transform 0.3s ease;
+    }
+    
+    .recapAliments {
+      margin-top: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Mode sombre / clair */
+    :root[data-theme="clair"] .repasTypeCard,
+    :root[data-theme="clair"] .alimentCard {
+      background: rgba(255,255,255,0.7);
+    }
+    
+    :root[data-theme="clair"] .alimentCard.selected {
+      background: rgba(52,211,153,0.2);
+    }
+  </style>
+</head>
+
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+
+<div class="wrap">
+  <header>
+  <div class="headerLeft">
+    <img class="logo" src="data:image/png;base64,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" alt="Logo AC (Reine des bolus)">
+    <div class="titleBlock">
+      <h1>Alice, Reine du Bolus !</h1>
+      <div class="sub">Calculateur de Bolus</div>
+    </div>
+  </div>
+
+  <div class="headerRight">
+    <button id="simpleBtn" class="btn" type="button" aria-pressed="false" aria-label="Activer le mode simple"><span id="simpleBtnIcon" aria-hidden="true">🔭</span> <span id="simpleText">Mode simple</span></button>
+    <button id="settingsBtn" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="settingsPanel" aria-label="Mes ratios"><span aria-hidden="true">⚙️</span></button>
+    <button id="themeBtn" class="btn btn-ghost" type="button" aria-pressed="false" aria-label="Changer le thème"><span id="themeIcon" class="iconSpin" aria-hidden="true"></span></button>
+  </div>
+</header>
+
+  <main id="main" class="wrap" style="padding:0; gap:14px" role="main">
+    <section class="card">
+      <div class="pillbar">
+        <div class="pills" aria-label="Résumé">
+          <div class="pill">
+            <span id="pillDot" class="dotGly" aria-hidden="true"></span>
+            🩸 <span class="pill-label">Glycémie</span> : <strong id="pillGly">—</strong> mg/dL
+          </div>
+          <div class="pill">🍬 <span class="pill-label">Glucides</span> : <strong id="pillCarbs">—</strong> g</div>
+          <div class="pill">🎯 <span class="pill-label">Objectif</span> : <strong id="pillTarget">—</strong> mg/dL</div>
+        </div>
+      </div>
+
+      <!-- Alerte "ratios obligatoires" (temps réel) -->
+      <div id="ratioAlert" class="alertBanner" role="status" aria-live="polite" aria-atomic="true">
+        ⚠️ Complète les insulines quotidiennes avant tout calcul :
+        <span>Basale ≥ <strong>20 U</strong> et Rapide ≥ <strong>10 U</strong>.</span>
+      </div>
+
+      <div id="settingsPanel" class="hidden" style="margin-top:12px">
+        <div class="row2">
+          <label>
+            <div class="label">Objectif glycémie (mg/dL)</div>
+            <div class="fieldLine">
+              <input id="objectif" type="number" inputmode="numeric" min="70" max="180" step="1" value="110">
+              <div id="objectifErr" class="fieldError" role="status" aria-live="polite">⚠️ 70–180</div>
+            </div>
+          </label>
+
+          <label>
+            <div class="label">Arrondi affiché</div>
+            <select id="arrondi" aria-label="Arrondi de dose">
+              <option value="0.1" selected>0,1 U (stylo)</option>
+              <option value="0.5">0,5 U</option>
+              <option value="1">1 U</option>
+            </select>
+            <div style="margin-top:8px; color:var(--muted); font-size:12px">On arrondit seulement l'affichage, pas les calculs internes.</div>
+          </label>
+        </div>
+
+        <details open>
+          <summary>🧮 Insulines quotidiennes (obligatoire)</summary>
+          <p style="margin:8px 0 0; color:var(--muted); font-size:12px">
+            DTQ = Basale + Rapide · ICR = 500 / DTQ · FSI = 1800 / DTQ
+          </p>
+
+          <div class="row2" style="margin-top:12px">
+            <label>
+              <div class="label">Insuline basale (U / jour) — 20 à 35</div>
+              <div class="fieldLine">
+                <input id="basale" type="number" inputmode="decimal" min="0" max="35" step="0.5" value="0">
+                <div id="basaleErr" class="fieldError" role="status" aria-live="polite">⚠️ 20–35</div>
+              </div>
+            </label>
+
+            <label>
+              <div class="label">Insuline rapide totale (U / jour) — 10 à 25</div>
+              <div class="fieldLine">
+                <input id="rapide" type="number" inputmode="decimal" min="10" max="25" step="0.5" value="0">
+                <div id="rapideErr" class="fieldError" role="status" aria-live="polite">⚠️ 10–25</div>
+              </div>
+            </label>
+          </div>
+
+          <div class="metrics" aria-label="Valeurs calculées">
+            <div class="metric"><div class="k">DTQ</div><div id="dtq" class="v">—</div></div>
+            <div class="metric"><div class="k">ICR (g/U)</div><div id="icr" class="v">—</div></div>
+            <div class="metric"><div class="k">FSI (mg/dL par U)</div><div id="fsi" class="v">—</div></div>
+          </div>
+        </details>
+
+        <details>
+          <summary>⚠️ Note de sécurité</summary>
+          <p>
+            Cet outil est informatif. Ne remplace pas l'avis médical. Vérifie toujours les unités et les valeurs avant injection.
+          </p>
+        </details>
+      </div>
+    </section>
+
+    <!-- MODE RAPIDE -->
+    <section id="panelFast" class="card" role="tabpanel" aria-labelledby="tabFast">
+      <!-- CHAMPS GLYCÉMIE + GLUCIDES (Toujours visibles, EN HAUT) -->
+      <div class="row2" style="margin-top:12px">
+        <div class="stepper">
+          <div class="label label-large">
+            <span id="labelDotFast" class="dotGly" aria-hidden="true"></span>
+            <span class="label-icon">🩸</span> Glycémie actuelle (mg/dL)
+          </div>
+          <div class="fieldLine">
+            <input id="glyFast" type="number" inputmode="numeric" min="50" max="500" step="1" value="" placeholder="Entre 50 et 500">
+            <div id="glyFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glycémie hors plage (50 à 500).</div>
+          </div>
+        </div>
+
+        <div class="stepper">
+          <div class="label label-large">
+            <span class="label-icon">🍬</span> Glucides du repas (g)
+          </div>
+          <div class="fieldLine">
+            <input id="carbFast" type="number" inputmode="numeric" min="0" max="200" step="1" value="" placeholder="Entre 0 et 200">
+            <div id="carbFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glucides hors plage (0 à 200).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RÉSULTATS avec bouton toggle -->
+      <div style="position: relative;">
+        <!-- Bouton toggle (mode simple uniquement) -->
+        <button id="toggleDetailsBtn" 
+                class="toggle-details-btn hide-in-advanced" 
+                onclick="toggleBolusDetails()" 
+                aria-label="Afficher les détails"
+                aria-expanded="false">
+          <span id="toggleDetailsIcon">+</span>
+        </button>
+        
+        <div id="resultsFastGrid" class="results" aria-label="Résultats rapides">
+          <div id="corrFastBox" class="res bolus-detail">
+            <div class="k">Correction</div><div id="corrFast" class="v">—</div>
+          </div>
+          <div id="repasFastBox" class="res bolus-detail">
+            <div class="k">Repas</div><div id="repasFast" class="v">—</div>
+          </div>
+          <div class="res total">
+            <div class="k">Bolus conseillé</div><div id="totalFast" class="v">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RATIOS (Seulement en mode initié) -->
+      <div id="ratioBadgesFast" class="miniBadges hide-in-simple" aria-label="Ratios utilisés (rapide)">
+        <span class="badge">ICR : <strong id="icrBadgeFast">—</strong> g/U</span>
+        <span class="badge">FSI : <strong id="fsiBadgeFast">—</strong> mg/dL/U</span>
+      </div>
+
+      <!-- MESSAGE STATUS : Résultat de la composition du repas -->
+      <div id="statusFast" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <!-- BOUTONS COMPOSITION REPAS (Mode simple uniquement) -->
+      <div id="repasButtonsSimple" class="hide-in-advanced" style="margin: 16px 0;">
+        <div style="text-align: center; margin-bottom: 12px;">
+          <h3 style="font-size: 16px; font-weight: 900; color: var(--text); margin: 0;">🌟 Compose ton repas</h3>
+          <p style="font-size: 13px; color: var(--muted); margin: 4px 0 0 0;">Choisis le type de repas</p>
+        </div>
+        <div class="repasTypeGrid" style="margin: 0 auto;">
+          <button class="repasTypeCard" onclick="simpleModeWizard.ouvrirRepas('petit_dejeuner')" type="button">
+            <div class="repasTypeEmoji">🌅</div>
+            <div class="repasTypeName">PETIT-DÉJ</div>
+          </button>
+          <button class="repasTypeCard" onclick="simpleModeWizard.ouvrirRepas('dejeuner')" type="button">
+            <div class="repasTypeEmoji">🍽️</div>
+            <div class="repasTypeName">DÉJEUNER</div>
+          </button>
+          <button class="repasTypeCard" onclick="simpleModeWizard.ouvrirRepas('gouter')" type="button">
+            <div class="repasTypeEmoji">🧁</div>
+            <div class="repasTypeName">GOÛTER</div>
+          </button>
+          <button class="repasTypeCard" onclick="simpleModeWizard.ouvrirRepas('diner')" type="button">
+            <div class="repasTypeEmoji">🌙</div>
+            <div class="repasTypeName">DÎNER</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- WIZARD MODE SIMPLE : Modale avec overlay -->
+      <div id="wizardOverlay">
+        <div id="wizardModal">
+          <button class="wizardCloseBtn" onclick="simpleModeWizard.fermerWizard()" aria-label="Fermer">✕</button>
+          <div id="simpleModeContainer">
+            <!-- Le wizard s'affichera ici dynamiquement -->
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTENU MODE INITIÉ UNIQUEMENT -->
+      <div id="fastCalculatorFields" class="hide-in-simple">
+      <!-- Bouton pour composer le repas (mode initié uniquement) -->
+      <button 
+        id="foodSearchToggle" 
+        class="foodSearchToggle" 
+        type="button"
+        aria-expanded="false"
+      >
+        🍽️ Composer mon repas
+      </button>
+
+      <!-- Panneau de recherche d'aliments -->
+      <div id="foodSearchPanel" class="hidden">
+        <!-- Recherche -->
+        <div class="searchBox">
+          <span class="searchIcon">🔍</span>
+          <input 
+            type="text" 
+            id="foodSearchInput" 
+            placeholder="Rechercher un aliment..."
+            autocomplete="off"
+          >
+        </div>
+
+        <!-- Résultats de recherche -->
+        <div id="searchResults" class="searchResults"></div>
+
+        <!-- Mon assiette -->
+        <div class="myPlate">
+          <h4>🍽️ Mon assiette</h4>
+          <div id="plateItems"></div>
+          <div id="plateSummary"></div>
+        </div>
+
+        <!-- Bouton validation -->
+        <button 
+          id="validateMealBtn" 
+          class="validateMealBtn"
+          type="button"
+          disabled
+        >
+          ✅ Valider mon repas
+        </button>
+      </div>
+      </div><!-- Fin fastCalculatorFields -->
+    </section>
+
+    <footer>
+      Tout reste sur ton appareil. Le thème et le mode simple sont enregistrés en local.
+    </footer>
+  </main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // -------------------- Helpers --------------------
+  const $ = (id) => document.getElementById(id);
+
+  const Util = {
+    toNumber(v){
+      if(v === null || v === undefined) return NaN;
+      const s = String(v).trim().replace(",", ".");
+      if(s === "") return NaN;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    },
+    clamp(n, min, max){
+      if(!Number.isFinite(n)) return NaN;
+      return Math.min(max, Math.max(min, n));
+    },
+    roundToStep(n, step){
+      if(!Number.isFinite(n)) return NaN;
+      const s = Number(step);
+      if(!Number.isFinite(s) || s <= 0) return n;
+      return Math.round(n / s) * s;
+    }
+  };
+
+  const rangeOk = (n, min, max) => Number.isFinite(n) && n >= min && n <= max;
+
+  // -------------------- Constants --------------------
+  const GLY_MIN = 50, GLY_MAX = 500;
+  const CARB_MIN = 0, CARB_MAX = 200;
+  const TARGET_MIN = 70, TARGET_MAX = 180;
+
+  const MIN_BASALE = 20, MAX_BASALE = 35;
+  const MIN_RAPIDE = 10,  MAX_RAPIDE = 25;
+
+  // -------------------- Storage --------------------
+  const Storage = {
+    keyTheme: "bc_theme_v1",
+    keySimple: "bc_simple_v1",
+    keyRatios: "bc_ratios_v1",
+    keyCarbs: "bc_last_carbs_v1",
+
+    getTheme(){ return localStorage.getItem(this.keyTheme) || "clair"; },
+    setTheme(v){ localStorage.setItem(this.keyTheme, v); },
+
+    getSimple(){ return localStorage.getItem(this.keySimple) === "1"; },
+    setSimple(v){ localStorage.setItem(this.keySimple, v ? "1" : "0"); },
+
+    getLastCarbs(){
+      const raw = localStorage.getItem(this.keyCarbs);
+      if(raw === null) return null;
+      const n = Util.toNumber(raw);
+      return Number.isFinite(n) ? n : null;
+    },
+    setLastCarbs(v){
+      if(Number.isFinite(v)) localStorage.setItem(this.keyCarbs, String(v));
+    },
+
+    // Ratios persisted for 3 days
+    getRatios(){
+      const raw = localStorage.getItem(this.keyRatios);
+      if(!raw) return null;
+      try{
+        const o = JSON.parse(raw);
+        if(!o || typeof o !== "object") return null;
+        const now = Date.now();
+        if(!Number.isFinite(o.expiresAt) || now > o.expiresAt) return null;
+        return {
+          basale: Util.toNumber(o.basale),
+          rapide: Util.toNumber(o.rapide),
+          objectif: Util.toNumber(o.objectif),
+          step: Util.toNumber(o.step)
+        };
+      }catch(_e){ return null; }
+    },
+    setRatios({basale, rapide, objectif, step}){
+      const now = Date.now();
+      const expiresAt = now + 3 * 24 * 60 * 60 * 1000;
+      localStorage.setItem(this.keyRatios, JSON.stringify({ basale, rapide, objectif, step, expiresAt }));
+    },
+    clearRatios(){
+      localStorage.removeItem(this.keyRatios);
+    }
+  };
+
+  // -------------------- DOM --------------------
+  const el = {
+    // header / toggles
+    themeBtn: $("themeBtn"),
+    themeIcon: $("themeIcon"),
+    simpleBtn: $("simpleBtn"),
+    simpleBtnIcon: $("simpleBtnIcon"),
+    simpleText: $("simpleText"),
+
+    // settings
+    settingsBtn: $("settingsBtn"),
+    settingsPanel: $("settingsPanel"),
+    ratioAlert: $("ratioAlert"),
+
+    basale: $("basale"),
+    rapide: $("rapide"),
+    objectif: $("objectif"),
+    arrondi: $("arrondi"),
+
+    basaleErr: $("basaleErr"),
+    rapideErr: $("rapideErr"),
+    objectifErr: $("objectifErr"),
+
+    // fast inputs
+    glyFast: $("glyFast"),
+    carbFast: $("carbFast"),
+    glyFastErr: $("glyFastErr"),
+    carbFastErr: $("carbFastErr"),
+
+    // pills
+    pillGly: $("pillGly"),
+    pillCarbs: $("pillCarbs"),
+    pillTarget: $("pillTarget"),
+    dtq: $("dtq"),
+    icr: $("icr"),
+    fsi: $("fsi"),
+    icrBadgeFast: $("icrBadgeFast"),
+    fsiBadgeFast: $("fsiBadgeFast"),
+
+    // results
+    corrFast: $("corrFast"),
+    repasFast: $("repasFast"),
+    totalFast: $("totalFast"),
+
+    statusFast: $("statusFast"),
+    status: $("status")
+  };
+
+  // -------------------- UI State --------------------
+  const Touched = { gly:false, carbs:false, objectif:false, basale:false, rapide:false };
+  let simpleMode = false;
+  let simpleModeWizard = null; // Instance du wizard (créée à l'init)
+
+  // -------------------- Theme --------------------
+  function applyTheme(theme){
+    document.documentElement.dataset.theme = theme;
+    if(el.themeIcon) el.themeIcon.textContent = (theme === "sombre") ? "🌙" : "☀️";
+  }
+
+  function initTheme(){
+    const t = Storage.getTheme();
+    applyTheme(t);
+  }
+
+  function toggleTheme(){
+    const cur = Storage.getTheme();
+    const next = (cur === "clair") ? "sombre" : "clair";
+    Storage.setTheme(next);
+    applyTheme(next);
+  }
+
+  // -------------------- Simple mode --------------------
+  function applySimpleMode(){
+    if(el.simpleBtn) el.simpleBtn.setAttribute("aria-pressed", String(simpleMode));
+    if(el.simpleText) el.simpleText.textContent = simpleMode ? "Mode simple" : "Mode initié";
+    
+    // Changer l'icône du bouton toggle
+    if(el.simpleBtnIcon){
+      el.simpleBtnIcon.textContent = simpleMode ? "🌟" : "🔭";
+    }
+    
+    document.body.classList.toggle("simple-mode", !!simpleMode);
+    
+    // NOUVEAU : Gérer l'affichage wizard vs contenu mode initié
+    const wizardContainer = document.getElementById('simpleModeContainer');
+    const initiatedContent = document.getElementById('fastCalculatorFields');
+    
+    if(simpleMode){
+      // MODE SIMPLE : Afficher le wizard, cacher le contenu mode initié
+      if(wizardContainer) {
+        wizardContainer.classList.remove('hidden');
+        // Initialiser le wizard
+        if(typeof simpleModeWizard !== 'undefined'){
+          simpleModeWizard.init();
+        }
+      }
+      if(initiatedContent) initiatedContent.classList.add('hidden');
+      
+      // Les champs Glycémie et Glucides restent TOUJOURS visibles
+      // Les détails (Correction, Repas, ICR, FSI) sont cachés par CSS (.hide-in-simple)
+    } else {
+      // MODE INITIÉ : Cacher le wizard, afficher le contenu mode initié
+      if(wizardContainer) wizardContainer.classList.add('hidden');
+      if(initiatedContent) initiatedContent.classList.remove('hidden');
+      
+      // Tous les détails sont visibles
+    }
+  }
+
+  function toggleSimpleMode(){
+    simpleMode = !simpleMode;
+    Storage.setSimple(simpleMode);
+    applySimpleMode();
+    render();
+  }
+
+  // -------------------- Toggle détails bolus (mode simple) --------------------
+  function toggleBolusDetails() {
+    console.log('🔍 toggleBolusDetails appelé');
+    console.log('Body classes avant:', document.body.className);
+    
+    const isShowing = document.body.classList.toggle('show-bolus-details');
+    
+    console.log('Body classes après:', document.body.className);
+    console.log('isShowing:', isShowing);
+    
+    const btn = document.getElementById('toggleDetailsBtn');
+    const icon = document.getElementById('toggleDetailsIcon');
+    
+    console.log('Bouton trouvé:', !!btn);
+    console.log('Icône trouvée:', !!icon);
+    
+    if (btn && icon) {
+      icon.textContent = isShowing ? '−' : '+';
+      btn.setAttribute('aria-expanded', String(isShowing));
+      btn.setAttribute('aria-label', isShowing ? 'Masquer les détails' : 'Afficher les détails');
+      console.log('✅ Bouton mis à jour:', icon.textContent);
+    }
+    
+    // Recalculer et afficher les valeurs
+    render();
+  }
+  
+  // Rendre la fonction accessible globalement
+  window.toggleBolusDetails = toggleBolusDetails;
+
+  // -------------------- Field errors --------------------
+  function setFieldError(inputEl, errEl, show){
+    if(!inputEl || !errEl) return;
+    inputEl.classList.toggle("input-error", !!show);
+    errEl.classList.toggle("show", !!show);
+  }
+
+  // -------------------- Settings panel lock --------------------
+  function setEditingRatios(isEditing){
+    document.body.classList.toggle("editing-ratios", !!isEditing);
+  }
+
+  function toggleSettings(){
+    if(!el.settingsPanel || !el.settingsBtn) return;
+    const isOpen = !el.settingsPanel.classList.contains("hidden");
+    el.settingsPanel.classList.toggle("hidden", isOpen);
+    el.settingsBtn.setAttribute("aria-expanded", String(!isOpen));
+    setEditingRatios(!isOpen);
+    if(!isOpen){
+      // opening: focus sur objectif glycémie pour accessibilité clavier
+      setTimeout(() => {
+        el.objectif?.focus();
+      }, 100);
+    }
+  }
+
+  // -------------------- Ratios / DTQ / ICR / FSI --------------------
+  function ratiosInRange(basale, rapide){
+    const ok = Number.isFinite(basale) && Number.isFinite(rapide)
+      && basale >= MIN_BASALE && basale <= MAX_BASALE
+      && rapide >= MIN_RAPIDE && rapide <= MAX_RAPIDE;
+    return ok;
+  }
+
+  function updateRatioAlert(basale, rapide){
+    const ok = ratiosInRange(basale, rapide);
+    if(el.ratioAlert){
+      el.ratioAlert.classList.toggle("show", !ok);
+    }
+    setFieldError(el.basale, el.basaleErr, Touched.basale && !(Number.isFinite(basale) && basale >= MIN_BASALE && basale <= MAX_BASALE));
+    setFieldError(el.rapide, el.rapideErr, Touched.rapide && !(Number.isFinite(rapide) && rapide >= MIN_RAPIDE && rapide <= MAX_RAPIDE));
+    return ok;
+  }
+
+  function validateTarget(){
+    const t = Util.toNumber(el.objectif?.value);
+    const invalid = !rangeOk(t, TARGET_MIN, TARGET_MAX);
+    setFieldError(el.objectif, el.objectifErr, Touched.objectif && invalid);
+    return { target: t, ok: !invalid };
+  }
+
+  function computeRatios(basale, rapide){
+    const dtq = basale + rapide;
+    if(!Number.isFinite(dtq) || dtq <= 0) return { dtq: NaN, icr: NaN, fsi: NaN };
+    const icr = 500 / dtq;
+    const fsi = 1800 / dtq;
+    return { dtq, icr, fsi };
+  }
+
+  function readCommonParams(){
+    const basale = Util.toNumber(el.basale?.value);
+    const rapide = Util.toNumber(el.rapide?.value);
+    const step = Util.toNumber(el.arrondi?.value);
+    const tv = validateTarget();
+    const ratiosOk = updateRatioAlert(basale, rapide);
+
+    if(!ratiosOk || !tv.ok){
+      return { basale, rapide, objectif: tv.target, step, ratiosOk:false, targetOk: tv.ok, dtq:NaN, icr:NaN, fsi:NaN };
+    }
+    const { dtq, icr, fsi } = computeRatios(basale, rapide);
+    return { basale, rapide, objectif: tv.target, step, ratiosOk:true, targetOk:true, dtq, icr, fsi };
+  }
+
+  // -------------------- Inputs validation (fast mode only) --------------------
+  function validateMealInputs(){
+    const g = Util.toNumber(el.glyFast?.value);
+    const c = Util.toNumber(el.carbFast?.value);
+
+    const glyInvalid = !rangeOk(g, GLY_MIN, GLY_MAX);
+    const carbInvalid = !rangeOk(c, CARB_MIN, CARB_MAX);
+
+    setFieldError(el.glyFast, el.glyFastErr, Touched.gly && glyInvalid);
+    setFieldError(el.carbFast, el.carbFastErr, Touched.carbs && carbInvalid);
+
+    const confirmed = Touched.gly && Touched.carbs;
+    
+    // Effet néon si le champ est vide ou invalide (et pas encore touché pour éviter l'erreur rouge)
+    const glyEmpty = !el.glyFast?.value || glyInvalid;
+    const carbEmpty = !el.carbFast?.value || carbInvalid;
+    
+    if(el.glyFast){
+      if(glyEmpty && !Touched.gly){
+        el.glyFast.classList.add("input-required-empty");
+      } else {
+        el.glyFast.classList.remove("input-required-empty");
+      }
+    }
+    
+    if(el.carbFast){
+      if(carbEmpty && !Touched.carbs){
+        el.carbFast.classList.add("input-required-empty");
+      } else {
+        el.carbFast.classList.remove("input-required-empty");
+      }
+    }
+
+    return { gly:g, carbs:c, ok: !(glyInvalid || carbInvalid), confirmed };
+  }
+
+  // -------------------- Status --------------------
+  function setStatus(level, text){
+    const node = el.statusFast || el.status;
+    if(!node) return;
+    
+    // NOUVEAU : Vérifier si un message du wizard est présent
+    const wizardMessage = node.querySelector('[data-wizard-preserved="true"]');
+    
+    // Si un message wizard existe, ne PAS l'écraser
+    if(wizardMessage){
+      // Mettre à jour seulement la classe (pour la couleur de fond)
+      node.classList.remove("ok","warn","bad","info");
+      node.classList.add("ok"); // Toujours vert si wizard message présent
+      return; // Ne rien faire d'autre - préserver le message
+    }
+    
+    // Sinon, comportement normal
+    node.classList.remove("ok","warn","bad","info");
+    node.classList.add(level);
+
+    const icon = (level === "ok") ? "✅" : (level === "warn") ? "⚠️" : (level === "info") ? "💎" : "⛔";
+    node.innerHTML = "";
+    const i = document.createElement("span");
+    i.className = "statusIcon";
+    i.setAttribute("aria-hidden","true");
+    i.textContent = icon;
+    const t = document.createElement("span");
+    t.className = "statusText";
+    t.textContent = text;
+    node.appendChild(i);
+    node.appendChild(t);
+  }
+
+  // -------------------- Calculation --------------------
+  function calcBolus(){
+    const p = readCommonParams();
+    const v = validateMealInputs();
+
+    // gate: ratios + target
+    if(!p.ratiosOk || !p.targetOk){
+      setStatus("warn", "Vérifie les paramètres (insulines quotidiennes et objectif).");
+      return null;
+    }
+    // gate: inputs in range - mais seulement afficher l'erreur si les champs sont vraiment invalides (et touchés)
+    if(!v.ok && v.confirmed){
+      setStatus("warn", "Vérifie les champs en rouge");
+      return null;
+    }
+    // gate: user confirmation (touch) - si pas confirmé, on garde le message bleu
+    if(!v.confirmed){
+      setStatus("info", "Complète les champs en bleu pour calculer ton bolus");
+      return null;
+    }
+
+    // keep last carbs
+    if(Number.isFinite(v.carbs)) Storage.setLastCarbs(v.carbs);
+
+    const rawCorrection = (v.gly - p.objectif) / p.fsi;
+    const correction = simpleMode ? Math.max(0, rawCorrection) : rawCorrection;
+    const repas = v.carbs / p.icr;
+    const total = correction + repas;
+    const totalArrondi = Util.roundToStep(total, p.step);
+
+    return { ...p, ...v, correction, repas, total, totalArrondi };
+  }
+
+  // -------------------- Rendering --------------------
+  function renderPills(params){
+    // Affichage des données (pills)
+    const t = params?.objectif;
+    if(el.pillTarget) el.pillTarget.textContent = (Number.isFinite(t) && rangeOk(t, TARGET_MIN, TARGET_MAX)) ? String(t) : "—";
+
+    const g = Util.toNumber(el.glyFast?.value);
+    if(el.pillGly) el.pillGly.textContent = Number.isFinite(g) ? String(g) : "—";
+    
+    // Coloration du point glycémie selon la valeur (pour les pills et le champ input)
+    const pillDot = $("pillDot");
+    const labelDotFast = $("labelDotFast");
+    
+    if(Number.isFinite(g) && Number.isFinite(t)){
+      const classes = [];
+      if(g < t - 20) classes.push("bad");           // Hypo
+      else if(g < t) classes.push("cool");          // Légèrement bas
+      else if(g <= t + 20) classes.push("good");    // Objectif
+      else if(g <= t + 50) classes.push("warn");    // Légèrement haut
+      else classes.push("bad");                     // Hyper
+      
+      // Appliquer aux deux points
+      if(pillDot){
+        pillDot.classList.remove("cool", "good", "warn", "bad");
+        pillDot.classList.add(...classes);
+      }
+      if(labelDotFast){
+        labelDotFast.classList.remove("cool", "good", "warn", "bad");
+        labelDotFast.classList.add(...classes);
+      }
+    } else {
+      // Reset si pas de valeur
+      if(pillDot) pillDot.classList.remove("cool", "good", "warn", "bad");
+      if(labelDotFast) labelDotFast.classList.remove("cool", "good", "warn", "bad");
+    }
+
+    const c = Util.toNumber(el.carbFast?.value);
+    if(el.pillCarbs) el.pillCarbs.textContent = Number.isFinite(c) ? String(c) : "—";
+
+    // Ratios calculés (DTQ / ICR / FSI) visibles dans Paramètres / détails
+    if(el.dtq) el.dtq.textContent = Number.isFinite(params?.dtq) ? params.dtq.toFixed(1) : "—";
+    if(el.icr) el.icr.textContent = Number.isFinite(params?.icr) ? params.icr.toFixed(1) : "—";
+    if(el.fsi) el.fsi.textContent = Number.isFinite(params?.fsi) ? params.fsi.toFixed(1) : "—";
+
+    // Badges rapides (mode initié seulement)
+    const icrTxt = Number.isFinite(params?.icr) ? params.icr.toFixed(1) : "—";
+    const fsiTxt = Number.isFinite(params?.fsi) ? params.fsi.toFixed(1) : "—";
+    if(el.icrBadgeFast) el.icrBadgeFast.textContent = icrTxt;
+    if(el.fsiBadgeFast) el.fsiBadgeFast.textContent = fsiTxt;
+  }
+
+  function renderResults(r){
+    const fmt = (n) => Number.isFinite(n) ? n.toFixed(2) : "—";
+    const fmt1 = (n) => Number.isFinite(n) ? n.toFixed(1) : "—";
+
+    // En mode simple SANS détails, on n'affiche que le total (arrondi)
+    const showDetails = document.body.classList.contains('show-bolus-details');
+    
+    console.log('📊 renderResults appelé');
+    console.log('  simpleMode:', simpleMode);
+    console.log('  showDetails:', showDetails);
+    console.log('  r:', r);
+    
+    if(simpleMode && !showDetails){
+      console.log('  → Mode simple fermé : masquer détails');
+      if(el.totalFast) el.totalFast.textContent = r ? fmt1(r.totalArrondi) : "—";
+      if(el.corrFast) el.corrFast.textContent = "—";
+      if(el.repasFast) el.repasFast.textContent = "—";
+      return;
+    }
+
+    console.log('  → Afficher tous les détails');
+    
+    // Mode initié OU mode simple avec détails : afficher tout
+    if(!r){
+      console.log('  → Pas de résultat, afficher —');
+      if(el.corrFast) el.corrFast.textContent = "—";
+      if(el.repasFast) el.repasFast.textContent = "—";
+      if(el.totalFast) el.totalFast.textContent = "—";
+      return;
+    }
+
+    console.log('  → Afficher valeurs:', {
+      correction: r.correction,
+      repas: r.repas,
+      total: r.totalArrondi
+    });
+    
+    if(el.corrFast) el.corrFast.textContent = fmt(r.correction);
+    if(el.repasFast) el.repasFast.textContent = fmt(r.repas);
+    if(el.totalFast) el.totalFast.textContent = fmt1(r.totalArrondi);
+  }
+
+  function render(){
+    const p = readCommonParams();
+    renderPills(p);
+
+    const result = calcBolus();
+    renderResults(result);
+
+    if(result){
+      setStatus("ok", "Calcul du Bolus réalisé");
+      // Non-bloquant : avertissement si rapide > basale (inhabituel médicalement)
+      if(p.rapide > p.basale){
+        setStatus("warn", "⚠️ Insuline rapide > basale : vérifie que c'est cohérent.");
+      }
+    }
+    // Pas de else ici - on laisse calcBolus() gérer les messages d'erreur/info
+  }
+
+  // -------------------- Init --------------------
+  function init(){
+    // Theme / simple mode
+    initTheme();
+    simpleMode = Storage.getSimple();
+    
+    // Créer l'instance du wizard (une seule fois)
+    if (typeof SimpleModeWizard !== 'undefined') {
+      simpleModeWizard = new SimpleModeWizard();
+    }
+    
+    applySimpleMode();
+
+    // Restore ratios (3 days) if available
+    const saved = Storage.getRatios();
+    if(saved && el.basale && el.rapide && el.objectif && el.arrondi){
+      el.basale.value = Number.isFinite(saved.basale) ? String(saved.basale) : "0";
+      el.rapide.value = Number.isFinite(saved.rapide) ? String(saved.rapide) : "0";
+      el.objectif.value = Number.isFinite(saved.objectif) ? String(saved.objectif) : el.objectif.value;
+      el.arrondi.value = Number.isFinite(saved.step) ? String(saved.step) : el.arrondi.value;
+      
+      // Marquer comme "touched" et valider si les valeurs restaurées sont invalides
+      if(!ratiosInRange(saved.basale, saved.rapide)){
+        Touched.basale = true;
+        Touched.rapide = true;
+      }
+      if(!rangeOk(saved.objectif, TARGET_MIN, TARGET_MAX)){
+        Touched.objectif = true;
+      }
+    }
+
+    // Restore last carbs (does NOT count as confirmation)
+    // Désactivé : on force l'utilisateur à entrer ses glucides à chaque fois
+    /*
+    const lastC = Storage.getLastCarbs();
+    if(Number.isFinite(lastC) && el.carbFast){
+      el.carbFast.value = String(lastC);
+    }
+    */
+
+    // Touch tracking (show errors only after user interaction)
+    const mark = (k) => { if(k in Touched) Touched[k] = true; };
+
+    el.glyFast?.addEventListener("input", () => { mark("gly"); render(); }, { passive:true });
+    el.glyFast?.addEventListener("blur",  () => { mark("gly"); render(); }, { passive:true });
+    el.glyFast?.addEventListener("change",() => { mark("gly"); render(); }, { passive:true });
+
+    el.carbFast?.addEventListener("input", () => { mark("carbs"); render(); }, { passive:true });
+    el.carbFast?.addEventListener("blur",  () => { mark("carbs"); render(); }, { passive:true });
+    el.carbFast?.addEventListener("change",() => { mark("carbs"); render(); }, { passive:true });
+
+    // NOUVEAU : Effacer le message wizard si modification manuelle des glucides
+    el.carbFast?.addEventListener("input", function(){
+      const statusNode = el.statusFast || el.status;
+      if(statusNode){
+        const wizardMessage = statusNode.querySelector('[data-wizard-preserved="true"]');
+        if(wizardMessage){
+          // L'utilisateur modifie manuellement → effacer le message wizard
+          wizardMessage.remove();
+        }
+      }
+    }, { passive:true });
+
+    el.objectif?.addEventListener("input", () => { mark("objectif"); render(); }, { passive:true });
+    el.objectif?.addEventListener("blur",  () => { mark("objectif"); render(); }, { passive:true });
+
+    el.basale?.addEventListener("input", () => { mark("basale"); render(); }, { passive:true });
+    el.basale?.addEventListener("blur",  () => { mark("basale"); render(); }, { passive:true });
+
+    el.rapide?.addEventListener("input", () => { mark("rapide"); render(); }, { passive:true });
+    el.rapide?.addEventListener("blur",  () => { mark("rapide"); render(); }, { passive:true });
+
+    el.arrondi?.addEventListener("change", () => { render(); }, { passive:true });
+
+    // Buttons
+    el.themeBtn?.addEventListener("click", toggleTheme);
+    el.simpleBtn?.addEventListener("click", toggleSimpleMode);
+    el.settingsBtn?.addEventListener("click", toggleSettings);
+
+    // Close settings on Escape
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && el.settingsPanel && !el.settingsPanel.classList.contains("hidden")){
+        toggleSettings();
+      }
+    });
+
+    // Save ratios when leaving settings panel (auto-save)
+    // We keep it simple: save on any change, but only if in-range.
+    let saveTimeout = null;
+    const saveRatiosIfOk = () => {
+      const basale = Util.toNumber(el.basale?.value);
+      const rapide = Util.toNumber(el.rapide?.value);
+      const objectif = Util.toNumber(el.objectif?.value);
+      const step = Util.toNumber(el.arrondi?.value);
+      if(ratiosInRange(basale, rapide) && rangeOk(objectif, TARGET_MIN, TARGET_MAX)){
+        Storage.setRatios({ basale, rapide, objectif, step });
+        
+        // Feedback visuel temporaire
+        if(el.settingsBtn){
+          const originalText = el.settingsBtn.innerHTML;
+          el.settingsBtn.innerHTML = '✓ Sauvegardé';
+          el.settingsBtn.style.color = 'var(--good)';
+          
+          if(saveTimeout) clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            el.settingsBtn.innerHTML = originalText;
+            el.settingsBtn.style.color = '';
+          }, 2000);
+        }
+      }
+    };
+    el.basale?.addEventListener("change", saveRatiosIfOk);
+    el.rapide?.addEventListener("change", saveRatiosIfOk);
+    el.objectif?.addEventListener("change", saveRatiosIfOk);
+    el.arrondi?.addEventListener("change", saveRatiosIfOk);
+
+    // Initial render
+    setEditingRatios(false);
+    render();
+    
+    // Forcer l'affichage du message bleu initial si aucun champ n'est rempli
+    const statusNode = el.statusFast || el.status;
+    if(statusNode){
+      setStatus("info", "Complète les champs en bleu pour calculer ton bolus");
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
