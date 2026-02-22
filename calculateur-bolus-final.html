@@ -1783,7 +1783,12 @@
     getTheme(){ return localStorage.getItem(this.keyTheme) || "clair"; },
     setTheme(v){ localStorage.setItem(this.keyTheme, v); },
 
-    getSimple(){ return localStorage.getItem(this.keySimple) === "1"; },
+    getSimple(){ 
+      const stored = localStorage.getItem(this.keySimple);
+      // Si jamais configuré, retourner true (mode simple par défaut)
+      if(stored === null) return true;
+      return stored === "1";
+    },
     setSimple(v){ localStorage.setItem(this.keySimple, v ? "1" : "0"); },
 
     getLastCarbs(){
