@@ -4,7 +4,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
-  <title>Calculateur de bolus — Version complète avec aliments</title>
+  <title>AC Bolus - Calculateur de Bolus</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  
+  <!-- Theme color pour Android -->
+  <meta name="theme-color" content="#6ee7ff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1220" />
+  
+  <!-- Description pour PWA -->
+  <meta name="description" content="Calculateur de bolus intelligent pour la gestion du diabète" />
+  
+  <!-- Apple Touch Icons (iOS) -->
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+  
+  <!-- Favicons classiques -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png" />
+  
+  <!-- Android Chrome -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="AC Bolus" />
+  
+  <!-- iOS Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AC Bolus" />
   
   <!-- Modules de gestion des aliments et optimisation -->
   <script src="food-database.js"></script>
