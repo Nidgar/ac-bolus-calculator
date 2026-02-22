@@ -2136,7 +2136,7 @@
     if(Number.isFinite(v.carbs)) Storage.setLastCarbs(v.carbs);
 
     const rawCorrection = (v.gly - p.objectif) / p.fsi;
-    const correction = simpleMode ? Math.max(0, rawCorrection) : rawCorrection;
+    const correction = rawCorrection;  // Permet les valeurs négatives en mode simple et initié
     const repas = v.carbs / p.icr;
     const total = correction + repas;
     const totalArrondi = Util.roundToStep(total, p.step);
