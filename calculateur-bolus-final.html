@@ -154,6 +154,8 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 16px;
+      max-width: 100%;
+      overflow-wrap: break-word;
     }
     :root[data-theme="clair"] .card{
       background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85) 140%);
@@ -268,6 +270,9 @@
       color: var(--text);
       font-weight: 900;
       display:none;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
     }
     .alertBanner.show{ display:block; }
     .alertBanner span{ color: var(--muted); font-weight: 800; }
