@@ -841,6 +841,28 @@
     .plateSummary .summaryItem{
       text-align: center;
     }
+    
+    /* Bloc IG coloré selon le niveau (avec transparence) */
+    .plateSummary .summaryItem.ig-low {
+      background: rgba(52, 211, 153, 0.12);  /* Vert transparent */
+      border: 1px solid rgba(52, 211, 153, 0.30);
+      border-radius: 10px;
+      padding: 8px;
+    }
+    
+    .plateSummary .summaryItem.ig-medium {
+      background: rgba(251, 191, 36, 0.12);  /* Jaune transparent */
+      border: 1px solid rgba(251, 191, 36, 0.30);
+      border-radius: 10px;
+      padding: 8px;
+    }
+    
+    .plateSummary .summaryItem.ig-high {
+      background: rgba(251, 113, 133, 0.12);  /* Rouge transparent */
+      border: 1px solid rgba(251, 113, 133, 0.30);
+      border-radius: 10px;
+      padding: 8px;
+    }
     .plateSummary .summaryLabel{
       font-size: 11px;
       color: var(--muted);
@@ -1396,10 +1418,28 @@
       border-color: rgba(167, 139, 250, 0.4);
     }
     
-    /* Bloc IG (rose) */
+    /* Bloc IG - Couleur par défaut (neutre) */
     .recapTotalItem.ig {
-      background: rgba(244, 114, 182, 0.15); /* Rose transparent */
+      background: rgba(244, 114, 182, 0.15); /* Rose transparent par défaut */
       border-color: rgba(244, 114, 182, 0.4);
+    }
+    
+    /* Bloc IG - IG BAS (< 55) - Vert */
+    .recapTotalItem.ig.ig-low {
+      background: rgba(52, 211, 153, 0.15); /* Vert transparent */
+      border-color: rgba(52, 211, 153, 0.4);
+    }
+    
+    /* Bloc IG - IG MOYEN (55-69) - Jaune/Orange */
+    .recapTotalItem.ig.ig-medium {
+      background: rgba(251, 191, 36, 0.15); /* Jaune transparent */
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+    
+    /* Bloc IG - IG ÉLEVÉ (≥ 70) - Rouge */
+    .recapTotalItem.ig.ig-high {
+      background: rgba(251, 113, 133, 0.15); /* Rouge transparent */
+      border-color: rgba(251, 113, 133, 0.4);
     }
     
     .recapTotalLabel {
@@ -2427,6 +2467,191 @@
   }
 
   init();
+})();
+
+// -------------------- Coloration dynamique du bloc IG (Récapitulatif mode simple) --------------------
+(() => {
+  "use strict";
+  
+  console.log('🎨 Script de coloration du bloc IG (Récapitulatif) chargé');
+  
+  // Fonction pour déterminer la classe CSS selon la valeur de l'IG
+  function getIGClass(igValue) {
+    if (igValue < 55) return 'ig-low';      // Vert
+    if (igValue <= 69) return 'ig-medium';  // Jaune
+    return 'ig-high';                        // Rouge
+  }
+  
+  // Fonction pour colorier le bloc IG dans le récapitulatif
+  function colorerBlocIGRecap() {
+    // Chercher le bloc IG dans le récapitulatif
+    const blocIG = document.querySelector('.recapTotalItem.ig');
+    
+    if (!blocIG) {
+      console.log('⚠️ Bloc IG du récapitulatif non trouvé');
+      return;
+    }
+    
+    console.log('✅ Bloc IG du récapitulatif trouvé');
+    
+    // Récupérer la valeur de l'IG
+    const valueElement = blocIG.querySelector('.recapTotalValue');
+    if (!valueElement) {
+      console.log('⚠️ recapTotalValue non trouvé');
+      return;
+    }
+    
+    const valueText = valueElement.textContent.trim();
+    const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
+    
+    console.log(`📊 Valeur IG détectée: ${igValue}`);
+    
+    if (!isNaN(igValue)) {
+      // Retirer les anciennes classes
+      blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
+      
+      // Ajouter la nouvelle classe selon la valeur
+      const igClass = getIGClass(igValue);
+      blocIG.classList.add(igClass);
+      
+      console.log(`🎨 Classe "${igClass}" appliquée au bloc IG`);
+      
+      // Afficher un résumé
+      let couleur = '';
+      if (igClass === 'ig-low') couleur = 'VERT (IG bas)';
+      else if (igClass === 'ig-medium') couleur = 'JAUNE (IG moyen)';
+      else couleur = 'ROUGE (IG élevé)';
+      
+      console.log(`✨ Le bloc IG est maintenant ${couleur}`);
+    } else {
+      console.log(`⚠️ Impossible de parser la valeur: "${valueText}"`);
+    }
+  }
+  
+  // Observer les changements dans le DOM pour détecter l'affichage du récapitulatif
+  const observer = new MutationObserver((mutations) => {
+    // Vérifier si un récapitulatif a été ajouté
+    const recapAdded = mutations.some(mutation => {
+      return Array.from(mutation.addedNodes).some(node => {
+        return node.nodeType === 1 && (
+          node.classList?.contains('recapRepas') ||
+          node.querySelector?.('.recapRepas')
+        );
+      });
+    });
+    
+    if (recapAdded) {
+      console.log('🔄 Récapitulatif détecté, coloration du bloc IG...');
+      // Petit délai pour laisser le DOM se stabiliser
+      setTimeout(colorerBlocIGRecap, 100);
+    }
+  });
+  
+  // Observer tout le body
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  console.log('👀 Observer installé pour détecter le récapitulatif');
+  
+  // Vérifier aussi au chargement (au cas où)
+  setTimeout(() => {
+    console.log('🔍 Vérification initiale...');
+    colorerBlocIGRecap();
+  }, 500);
+})();
+
+// -------------------- Coloration dynamique du bloc IG (Mon assiette) --------------------
+(() => {
+  "use strict";
+  
+  console.log('🎨 Script de coloration du bloc IG (Mon assiette) chargé');
+  
+  // Fonction pour déterminer la classe CSS selon la valeur de l'IG
+  function getIGClass(igValue) {
+    if (igValue < 55) return 'ig-low';      // Vert
+    if (igValue <= 69) return 'ig-medium';  // Jaune
+    return 'ig-high';                        // Rouge
+  }
+  
+  // Fonction pour colorier le bloc IG
+  function colorerBlocIG() {
+    const plateSummary = document.getElementById('plateSummary');
+    if (!plateSummary) {
+      console.log('⚠️ plateSummary non trouvé');
+      return;
+    }
+    
+    console.log('🔍 Recherche du bloc IG dans plateSummary');
+    console.log('📄 Contenu HTML:', plateSummary.innerHTML);
+    
+    // Trouver tous les summaryItem
+    const items = plateSummary.querySelectorAll('.summaryItem');
+    console.log(`📦 ${items.length} summaryItem(s) trouvé(s)`);
+    
+    items.forEach((item, index) => {
+      const label = item.querySelector('.summaryLabel');
+      const valueElement = item.querySelector('.summaryValue');
+      
+      if (label && valueElement) {
+        const labelText = label.textContent.trim();
+        const valueText = valueElement.textContent.trim();
+        console.log(`  Item ${index}: "${labelText}" = "${valueText}"`);
+        
+        // Vérifier si c'est le bloc IG (plusieurs variantes possibles)
+        if (labelText.includes('IG') || 
+            labelText.includes('Index') || 
+            labelText.includes('glycémique') ||
+            labelText.toLowerCase().includes('ig')) {
+          
+          console.log(`  ✅ Bloc IG trouvé: "${labelText}"`);
+          
+          // Récupérer la valeur de l'IG
+          const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
+          
+          if (!isNaN(igValue)) {
+            // Retirer les anciennes classes
+            item.classList.remove('ig-low', 'ig-medium', 'ig-high');
+            
+            // Ajouter la nouvelle classe selon la valeur
+            const igClass = getIGClass(igValue);
+            item.classList.add(igClass);
+            
+            console.log(`  🎨 IG = ${igValue} → classe "${igClass}" appliquée`);
+          } else {
+            console.log(`  ⚠️ Impossible de parser la valeur: "${valueText}"`);
+          }
+        }
+      }
+    });
+  }
+  
+  // Observer les changements dans plateSummary
+  const plateSummary = document.getElementById('plateSummary');
+  if (plateSummary) {
+    console.log('👀 Observer installé sur plateSummary');
+    
+    // Observer initial (après un petit délai)
+    setTimeout(() => {
+      console.log('🔄 Coloration initiale...');
+      colorerBlocIG();
+    }, 100);
+    
+    // Observer les changements futurs
+    const observer = new MutationObserver((mutations) => {
+      console.log(`🔄 ${mutations.length} mutation(s) détectée(s), re-coloration...`);
+      colorerBlocIG();
+    });
+    
+    observer.observe(plateSummary, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  } else {
+    console.log('❌ plateSummary introuvable au chargement');
+  }
 })();
 </script>
 </body>
