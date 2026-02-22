@@ -87,7 +87,7 @@
       display: grid;
       gap: 14px;
       box-sizing: border-box;  /* Inclut padding dans la largeur */
-      overflow: hidden;  /* Empêche le débordement */
+      overflow: visible;  /* Permet au bouton toggle de dépasser */
     }
 
     @media (max-width:720px){
@@ -460,30 +460,32 @@
     /* Bouton toggle détails bolus (mode simple) */
     .toggle-details-btn {
       position: absolute;
-      left: -48px;
+      left: -26px;  /* Déplacé 10px vers la gauche (de -16px à -26px) */
       top: 50%;
       transform: translateY(-50%);
-      width: 40px;
-      height: 40px;
+      width: 44px;  /* Légèrement plus grand pour meilleure visibilité */
+      height: 44px;
       border-radius: 50%;
-      border: 2px solid var(--border);
+      border: 2px solid var(--accent);  /* Bordure accent pour meilleure visibilité */
       background: var(--panel2);
-      color: var(--text);
-      font-size: 20px;
+      color: var(--accent);  /* Couleur accent pour meilleure visibilité */
+      font-size: 22px;
       font-weight: 900;
       cursor: pointer;
       transition: all 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 10;
+      z-index: 1000;  /* Z-index très élevé pour être au-dessus de tout */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);  /* Ombre pour le détacher du fond */
     }
     
     .toggle-details-btn:hover {
       background: var(--accent);
       border-color: var(--accent);
       color: white;
-      transform: translateY(-50%) scale(1.1);
+      transform: translateY(-50%) scale(1.15);
+      box-shadow: 0 6px 20px rgba(110, 231, 255, 0.4);
     }
     
     /* Cache le bouton sur petit écran */
@@ -1622,7 +1624,7 @@
       </div>
 
       <!-- RÉSULTATS avec bouton toggle -->
-      <div style="position: relative;">
+      <div style="position: relative; overflow: visible;">
         <!-- Bouton toggle (mode simple uniquement) -->
         <button id="toggleDetailsBtn" 
                 class="toggle-details-btn hide-in-advanced" 
