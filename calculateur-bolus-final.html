@@ -80,7 +80,7 @@
     .skip:focus{ left:12px; top:12px; outline:none; }
 
     .wrap{
-      max-width: 1100px;  /* Augmenté de 980px à 1100px */
+      max-width: 840px;  /* Optimisé pour 4 boutons + espacements égaux (~35px) */
       width: 100%;  /* Prend toute la largeur disponible */
       margin: 0 auto;
       padding: 16px;
@@ -551,7 +551,7 @@
     }
   
     header{
-      max-width: 1100px;  /* Augmenté de 980px à 1100px */
+      max-width: 840px;  /* Aligné avec .wrap */
       margin:0 auto 24px auto;
       display:flex;
       align-items:center;
@@ -975,10 +975,10 @@
     
     @media (min-width: 600px) {
       .repasTypeGrid {
-        display: flex;  /* Utiliser flex au lieu de grid */
-        justify-content: space-between;  /* Espacement égal */
-        gap: 0;  /* Pas de gap, space-between gère */
-        max-width: 720px;  /* Légèrement augmenté */
+        display: flex;
+        justify-content: space-evenly;  /* Espacement égal PARTOUT (bords inclus) */
+        gap: 0;
+        max-width: 808px;  /* 4×166px + 5×(808-664)/5 = 4×166px + 5×28.8px */
         width: 100%;
       }
       
