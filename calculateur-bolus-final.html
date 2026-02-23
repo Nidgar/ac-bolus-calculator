@@ -1424,22 +1424,25 @@
       border-color: rgba(244, 114, 182, 0.4);
     }
     
-    /* Bloc IG - IG BAS (< 55) - Vert */
-    .recapTotalItem.ig.ig-low {
-      background: rgba(52, 211, 153, 0.15); /* Vert transparent */
-      border-color: rgba(52, 211, 153, 0.4);
+    /* Bloc IG - IG BAS (< 55) - Vert - SPÉCIFICITÉ RENFORCÉE */
+    .recapTotalItem.ig.ig-low,
+    .recapRepas .recapTotalItem.ig.ig-low {
+      background: rgba(52, 211, 153, 0.15) !important; /* Vert transparent */
+      border-color: rgba(52, 211, 153, 0.4) !important;
     }
     
-    /* Bloc IG - IG MOYEN (55-69) - Jaune/Orange */
-    .recapTotalItem.ig.ig-medium {
-      background: rgba(251, 191, 36, 0.15); /* Jaune transparent */
-      border-color: rgba(251, 191, 36, 0.4);
+    /* Bloc IG - IG MOYEN (55-69) - Jaune/Orange - SPÉCIFICITÉ RENFORCÉE */
+    .recapTotalItem.ig.ig-medium,
+    .recapRepas .recapTotalItem.ig.ig-medium {
+      background: rgba(251, 191, 36, 0.15) !important; /* Jaune transparent */
+      border-color: rgba(251, 191, 36, 0.4) !important;
     }
     
-    /* Bloc IG - IG ÉLEVÉ (≥ 70) - Rouge */
-    .recapTotalItem.ig.ig-high {
-      background: rgba(251, 113, 133, 0.15); /* Rouge transparent */
-      border-color: rgba(251, 113, 133, 0.4);
+    /* Bloc IG - IG ÉLEVÉ (≥ 70) - Rouge - SPÉCIFICITÉ RENFORCÉE */
+    .recapTotalItem.ig.ig-high,
+    .recapRepas .recapTotalItem.ig.ig-high {
+      background: rgba(251, 113, 133, 0.15) !important; /* Rouge transparent */
+      border-color: rgba(251, 113, 133, 0.4) !important;
     }
     
     .recapTotalLabel {
@@ -2467,6 +2470,47 @@
   }
 
   init();
+  
+  // BOUTON DE TEST MANUEL (À RETIRER APRÈS DEBUG)
+  window.testColorerBlocIG = function() {
+    console.log('🧪 TEST MANUEL DE COLORATION');
+    const blocIG = document.querySelector('.recapTotalItem.ig');
+    if (blocIG) {
+      const valueElement = blocIG.querySelector('.recapTotalValue');
+      if (valueElement) {
+        const valueText = valueElement.textContent.trim();
+        const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
+        console.log('Valeur IG:', igValue);
+        
+        blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
+        
+        let classe = '';
+        if (igValue < 55) classe = 'ig-low';
+        else if (igValue <= 69) classe = 'ig-medium';
+        else classe = 'ig-high';
+        
+        blocIG.classList.add(classe);
+        console.log('Classe appliquée:', classe);
+        console.log('Classes finales:', blocIG.className);
+        
+        // Forcer le style inline aussi pour être sûr
+        if (classe === 'ig-low') {
+          blocIG.style.background = 'rgba(52, 211, 153, 0.15)';
+          blocIG.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+        } else if (classe === 'ig-medium') {
+          blocIG.style.background = 'rgba(251, 191, 36, 0.15)';
+          blocIG.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+        } else {
+          blocIG.style.background = 'rgba(251, 113, 133, 0.15)';
+          blocIG.style.borderColor = 'rgba(251, 113, 133, 0.4)';
+        }
+        console.log('✅ Style inline forcé aussi');
+      }
+    } else {
+      console.log('❌ Bloc IG non trouvé');
+    }
+  };
+  console.log('💡 Pour tester: tapez testColorerBlocIG() dans la console');
 })();
 
 // -------------------- Coloration dynamique du bloc IG (Récapitulatif mode simple) --------------------
@@ -2489,7 +2533,7 @@
     
     if (!blocIG) {
       console.log('⚠️ Bloc IG du récapitulatif non trouvé');
-      return;
+      return false;
     }
     
     console.log('✅ Bloc IG du récapitulatif trouvé');
@@ -2498,7 +2542,7 @@
     const valueElement = blocIG.querySelector('.recapTotalValue');
     if (!valueElement) {
       console.log('⚠️ recapTotalValue non trouvé');
-      return;
+      return false;
     }
     
     const valueText = valueElement.textContent.trim();
@@ -2514,6 +2558,18 @@
       const igClass = getIGClass(igValue);
       blocIG.classList.add(igClass);
       
+      // Forcer aussi avec style inline pour être sûr
+      if (igClass === 'ig-low') {
+        blocIG.style.background = 'rgba(52, 211, 153, 0.15)';
+        blocIG.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+      } else if (igClass === 'ig-medium') {
+        blocIG.style.background = 'rgba(251, 191, 36, 0.15)';
+        blocIG.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+      } else {
+        blocIG.style.background = 'rgba(251, 113, 133, 0.15)';
+        blocIG.style.borderColor = 'rgba(251, 113, 133, 0.4)';
+      }
+      
       console.log(`🎨 Classe "${igClass}" appliquée au bloc IG`);
       
       // Afficher un résumé
@@ -2523,8 +2579,20 @@
       else couleur = 'ROUGE (IG élevé)';
       
       console.log(`✨ Le bloc IG est maintenant ${couleur}`);
+      return true;
     } else {
       console.log(`⚠️ Impossible de parser la valeur: "${valueText}"`);
+      return false;
+    }
+  }
+  
+  // Fonction pour essayer de colorer avec plusieurs tentatives
+  function essayerColoration(tentative = 0, maxTentatives = 10) {
+    const success = colorerBlocIGRecap();
+    
+    if (!success && tentative < maxTentatives) {
+      console.log(`⏳ Tentative ${tentative + 1}/${maxTentatives}...`);
+      setTimeout(() => essayerColoration(tentative + 1, maxTentatives), 200);
     }
   }
   
@@ -2535,15 +2603,17 @@
       return Array.from(mutation.addedNodes).some(node => {
         return node.nodeType === 1 && (
           node.classList?.contains('recapRepas') ||
-          node.querySelector?.('.recapRepas')
+          node.classList?.contains('recapTotalItem') ||
+          node.querySelector?.('.recapRepas') ||
+          node.querySelector?.('.recapTotalItem')
         );
       });
     });
     
     if (recapAdded) {
       console.log('🔄 Récapitulatif détecté, coloration du bloc IG...');
-      // Petit délai pour laisser le DOM se stabiliser
-      setTimeout(colorerBlocIGRecap, 100);
+      // Plusieurs tentatives espacées
+      setTimeout(() => essayerColoration(), 100);
     }
   });
   
@@ -2555,10 +2625,13 @@
   
   console.log('👀 Observer installé pour détecter le récapitulatif');
   
-  // Vérifier aussi au chargement (au cas où)
-  setTimeout(() => {
-    console.log('🔍 Vérification initiale...');
-    colorerBlocIGRecap();
+  // Vérifier aussi régulièrement au cas où
+  setInterval(() => {
+    const blocIG = document.querySelector('.recapTotalItem.ig');
+    if (blocIG && !blocIG.classList.contains('ig-low') && !blocIG.classList.contains('ig-medium') && !blocIG.classList.contains('ig-high')) {
+      console.log('🔄 Bloc IG détecté sans classe, coloration...');
+      colorerBlocIGRecap();
+    }
   }, 500);
 })();
 
