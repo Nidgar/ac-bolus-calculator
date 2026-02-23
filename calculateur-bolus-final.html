@@ -2480,31 +2480,56 @@
       if (valueElement) {
         const valueText = valueElement.textContent.trim();
         const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
-        console.log('Valeur IG:', igValue);
+        console.log('📝 Texte brut:', valueText);
+        console.log('📊 Valeur parsée:', igValue);
         
-        blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
-        
+        // Déterminer la classe et l'emoji avec logs détaillés
         let classe = '';
-        if (igValue < 55) classe = 'ig-low';
-        else if (igValue <= 69) classe = 'ig-medium';
-        else classe = 'ig-high';
+        let emoji = '';
+        if (igValue < 55) {
+          classe = 'ig-low';
+          emoji = '🟢';
+          console.log(`✅ ${igValue} < 55 → IG BAS (VERT)`);
+        } else if (igValue <= 69) {
+          classe = 'ig-medium';
+          emoji = '🟡';
+          console.log(`✅ ${igValue} est entre 55 et 69 → IG MOYEN (JAUNE)`);
+        } else {
+          classe = 'ig-high';
+          emoji = '🔴';
+          console.log(`✅ ${igValue} >= 70 → IG ÉLEVÉ (ROUGE)`);
+        }
         
+        // Nettoyer complètement
+        blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
+        blocIG.style.background = '';
+        blocIG.style.borderColor = '';
+        
+        // Appliquer la nouvelle classe
         blocIG.classList.add(classe);
         console.log('Classe appliquée:', classe);
         console.log('Classes finales:', blocIG.className);
         
-        // Forcer le style inline aussi pour être sûr
+        // CHANGER LA SPHÈRE APRÈS LE CHIFFRE (pas l'icône du label !)
+        const currentText = valueElement.textContent;
+        const numberOnly = igValue.toString();
+        const newText = numberOnly + ' ' + emoji;
+        valueElement.textContent = newText;
+        console.log(`🎨 Sphère changée: "${currentText}" → "${newText}"`);
+        
+        // Forcer le style inline avec setProperty
         if (classe === 'ig-low') {
-          blocIG.style.background = 'rgba(52, 211, 153, 0.15)';
-          blocIG.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+          blocIG.style.setProperty('background', 'rgba(52, 211, 153, 0.15)', 'important');
+          blocIG.style.setProperty('border-color', 'rgba(52, 211, 153, 0.4)', 'important');
         } else if (classe === 'ig-medium') {
-          blocIG.style.background = 'rgba(251, 191, 36, 0.15)';
-          blocIG.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+          blocIG.style.setProperty('background', 'rgba(251, 191, 36, 0.15)', 'important');
+          blocIG.style.setProperty('border-color', 'rgba(251, 191, 36, 0.4)', 'important');
         } else {
-          blocIG.style.background = 'rgba(251, 113, 133, 0.15)';
-          blocIG.style.borderColor = 'rgba(251, 113, 133, 0.4)';
+          blocIG.style.setProperty('background', 'rgba(251, 113, 133, 0.15)', 'important');
+          blocIG.style.setProperty('border-color', 'rgba(251, 113, 133, 0.4)', 'important');
         }
-        console.log('✅ Style inline forcé aussi');
+        console.log('✅ Style inline forcé avec setProperty');
+        console.log('Background final:', window.getComputedStyle(blocIG).backgroundColor);
       }
     } else {
       console.log('❌ Bloc IG non trouvé');
@@ -2546,39 +2571,66 @@
     }
     
     const valueText = valueElement.textContent.trim();
+    console.log(`📝 Texte brut de la valeur: "${valueText}"`);
+    
+    // Parser la valeur (enlever tout sauf les chiffres)
     const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
     
-    console.log(`📊 Valeur IG détectée: ${igValue}`);
+    console.log(`📊 Valeur IG parsée: ${igValue} (type: ${typeof igValue})`);
     
     if (!isNaN(igValue)) {
-      // Retirer les anciennes classes
-      blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
-      
-      // Ajouter la nouvelle classe selon la valeur
-      const igClass = getIGClass(igValue);
-      blocIG.classList.add(igClass);
-      
-      // Forcer aussi avec style inline pour être sûr
-      if (igClass === 'ig-low') {
-        blocIG.style.background = 'rgba(52, 211, 153, 0.15)';
-        blocIG.style.borderColor = 'rgba(52, 211, 153, 0.4)';
-      } else if (igClass === 'ig-medium') {
-        blocIG.style.background = 'rgba(251, 191, 36, 0.15)';
-        blocIG.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+      // Déterminer la classe et l'emoji
+      let igClass = '';
+      let emoji = '';
+      if (igValue < 55) {
+        igClass = 'ig-low';
+        emoji = '🟢';
+        console.log(`✅ ${igValue} < 55 → IG BAS (VERT)`);
+      } else if (igValue <= 69) {
+        igClass = 'ig-medium';
+        emoji = '🟡';
+        console.log(`✅ ${igValue} est entre 55 et 69 → IG MOYEN (JAUNE)`);
       } else {
-        blocIG.style.background = 'rgba(251, 113, 133, 0.15)';
-        blocIG.style.borderColor = 'rgba(251, 113, 133, 0.4)';
+        igClass = 'ig-high';
+        emoji = '🔴';
+        console.log(`✅ ${igValue} >= 70 → IG ÉLEVÉ (ROUGE)`);
       }
       
-      console.log(`🎨 Classe "${igClass}" appliquée au bloc IG`);
+      // Retirer TOUTES les anciennes classes et styles
+      blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
+      blocIG.style.background = '';
+      blocIG.style.borderColor = '';
       
-      // Afficher un résumé
-      let couleur = '';
-      if (igClass === 'ig-low') couleur = 'VERT (IG bas)';
-      else if (igClass === 'ig-medium') couleur = 'JAUNE (IG moyen)';
-      else couleur = 'ROUGE (IG élevé)';
+      // Ajouter la nouvelle classe
+      blocIG.classList.add(igClass);
+      console.log(`🏷️ Classe CSS "${igClass}" ajoutée`);
       
-      console.log(`✨ Le bloc IG est maintenant ${couleur}`);
+      // MODIFIER LA SPHÈRE APRÈS LE CHIFFRE (dans recapTotalValue)
+      // Ne PAS toucher l'icône avant le mot "IG" dans recapTotalLabel !
+      const currentText = valueElement.textContent;
+      const numberOnly = currentText.replace(/[^\d]/g, '');
+      const newText = numberOnly + ' ' + emoji;
+      valueElement.textContent = newText;
+      console.log(`🎨 Sphère changée en ${emoji} après le chiffre ${numberOnly}`);
+      
+      // Forcer aussi avec style inline pour être sûr (avec !important simulé)
+      if (igClass === 'ig-low') {
+        blocIG.style.setProperty('background', 'rgba(52, 211, 153, 0.15)', 'important');
+        blocIG.style.setProperty('border-color', 'rgba(52, 211, 153, 0.4)', 'important');
+        console.log('🎨 Style VERT appliqué');
+      } else if (igClass === 'ig-medium') {
+        blocIG.style.setProperty('background', 'rgba(251, 191, 36, 0.15)', 'important');
+        blocIG.style.setProperty('border-color', 'rgba(251, 191, 36, 0.4)', 'important');
+        console.log('🎨 Style JAUNE appliqué');
+      } else {
+        blocIG.style.setProperty('background', 'rgba(251, 113, 133, 0.15)', 'important');
+        blocIG.style.setProperty('border-color', 'rgba(251, 113, 133, 0.4)', 'important');
+        console.log('🎨 Style ROUGE appliqué');
+      }
+      
+      console.log(`✅ Classes finales: ${blocIG.className}`);
+      console.log(`✅ Style background final: ${blocIG.style.background}`);
+      
       return true;
     } else {
       console.log(`⚠️ Impossible de parser la valeur: "${valueText}"`);
