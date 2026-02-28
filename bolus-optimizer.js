@@ -1,80 +1,89 @@
 /**
- * BolusOptimizer - Optimisation du calcul de bolus selon IG/CG
- * Intégration avec FoodDatabase pour ajustements intelligents
+ * BolusOptimizer v2.0 — Optimisation bolus selon IG/CG (Issue 8)
+ * ──────────────────────────────────────────────────────────────
+ * Changements v2.0 :
+ *   - optimizeBolus() accepte désormais MealMetrics { carbs_g, ig_mean, cg_total }
+ *   - Rétro-compatibilité : les anciens champs { glucides, ig_moyen, cg_totale }
+ *     sont acceptés via mapping interne (_normalizeMealMetrics)
+ *   - Les arrondis d'affichage sont délégués à MealMetrics.format() ou à l'UI
  */
 
 class BolusOptimizer {
   constructor() {
-    // Paramètres par défaut (personnalisables)
     this.config = {
-      // Facteur de sensibilité à l'IG (0.005 = 0.5% par point d'IG)
-      ig_sensitivity: 0.005,
-      
-      // IG de référence (autour duquel il n'y a pas d'ajustement)
-      ig_reference: 55,
-      
-      // Limites des ajustements (±20%)
-      max_adjustment: 0.20,
-      min_adjustment: -0.20,
-      
-      // Seuils CG
-      cg_low: 10,
-      cg_high: 20,
-      
-      // Ajustements CG
+      ig_sensitivity:    0.005,  // 0.5% par point d'IG
+      ig_reference:      55,     // IG de référence (pas d'ajustement autour de 55)
+      max_adjustment:    0.20,   // +20% max
+      min_adjustment:   -0.20,   // -20% min
+      cg_low:            10,
+      cg_high:           20,
       cg_low_adjustment: -0.05,  // -5%
       cg_high_adjustment: 0.05,  // +5%
-      
-      // Seuils pour fractionnement
       ig_split_threshold: 70,
-      ig_fast_threshold: 55
+      ig_fast_threshold:  55,
     };
   }
 
+  // ─── Normalisation du contrat d'entrée ────────────────────────────────
+
   /**
-   * Calcule le facteur d'ajustement basé sur l'IG
-   * @param {number} ig_moyen - IG moyen du repas
-   * @returns {number} - Facteur multiplicateur (ex: 1.05 = +5%)
+   * Normalise les métriques repas vers le contrat MealMetrics standard.
+   * Accepte les deux formes :
+   *   - Nouveau : { carbs_g, ig_mean, cg_total }
+   *   - Ancien  : { glucides, ig_moyen, cg_totale }  (rétro-compat)
+   *
+   * @param {object} params
+   * @returns {{ carbs_g: number, ig_mean: number, cg_total: number }}
+   * @private
    */
-  calculateIGFactor(ig_moyen) {
-    if (!ig_moyen || ig_moyen < 0) return 1.0;
-    
-    // Formule : 1 + ((IG - IG_ref) × sensibilité)
-    let factor = 1 + ((ig_moyen - this.config.ig_reference) * this.config.ig_sensitivity);
-    
-    // Limiter les ajustements
-    const maxFactor = 1 + this.config.max_adjustment;
-    const minFactor = 1 + this.config.min_adjustment;
-    
-    factor = Math.max(minFactor, Math.min(maxFactor, factor));
-    
-    return factor;
+  _normalizeMealMetrics(params) {
+    return {
+      carbs_g:  params.carbs_g  ?? params.glucides  ?? 0,
+      ig_mean:  params.ig_mean  ?? params.ig_moyen  ?? 0,
+      cg_total: params.cg_total ?? params.cg_totale ?? 0,
+    };
+  }
+
+  // ─── Calcul des facteurs ──────────────────────────────────────────────
+
+  /**
+   * Facteur d'ajustement basé sur l'IG.
+   * Formule : 1 + ((IG - IG_ref) × sensibilité), clampé ±20%
+   *
+   * @param {number} igMean
+   * @returns {number} ex: 1.075 pour IG=70
+   */
+  calculateIGFactor(igMean) {
+    if (!igMean || igMean < 0) return 1.0;
+    const factor = 1 + ((igMean - this.config.ig_reference) * this.config.ig_sensitivity);
+    const max = 1 + this.config.max_adjustment;
+    const min = 1 + this.config.min_adjustment;
+    return Math.max(min, Math.min(max, factor));
   }
 
   /**
-   * Calcule le facteur d'ajustement basé sur la CG
-   * @param {number} cg_totale - CG totale du repas
-   * @returns {number} - Facteur multiplicateur
+   * Facteur d'ajustement basé sur la CG.
+   *
+   * @param {number} cgTotal
+   * @returns {number} 0.95 | 1.0 | 1.05
    */
-  calculateCGFactor(cg_totale) {
-    if (!cg_totale || cg_totale < 0) return 1.0;
-    
-    if (cg_totale < this.config.cg_low) {
-      return 1 + this.config.cg_low_adjustment;  // -5%
-    } else if (cg_totale >= this.config.cg_high) {
-      return 1 + this.config.cg_high_adjustment; // +5%
-    }
-    
-    return 1.0; // CG moyenne, pas d'ajustement
+  calculateCGFactor(cgTotal) {
+    if (!cgTotal || cgTotal < 0) return 1.0;
+    if (cgTotal < this.config.cg_low)  return 1 + this.config.cg_low_adjustment;
+    if (cgTotal >= this.config.cg_high) return 1 + this.config.cg_high_adjustment;
+    return 1.0;
   }
 
+  // ─── Stratégie ────────────────────────────────────────────────────────
+
   /**
-   * Détermine la stratégie de bolus optimale
-   * @param {number} ig_moyen - IG moyen du repas
-   * @returns {Object} - {strategy, split, timing, message}
+   * Détermine la stratégie de bolus optimale selon l'IG moyen.
+   *
+   * @param {number} igMean
+   * @returns {{ strategy: string, split: object, timing: string, message: string, icon: string }}
    */
-  determineBolusStrategy(ig_moyen) {
-    if (!ig_moyen || ig_moyen < 0) {
+  determineBolusStrategy(igMean) {
+    if (!igMean || igMean < 0) {
       return {
         strategy: 'standard',
         split: { before: 100, after: 0 },
@@ -83,226 +92,138 @@ class BolusOptimizer {
         icon: '🟢'
       };
     }
-
-    if (ig_moyen < this.config.ig_fast_threshold) {
-      // IG bas : bolus normal
+    if (igMean < this.config.ig_fast_threshold) {
       return {
         strategy: 'normal',
         split: { before: 100, after: 0 },
         timing: 'normal',
         message: 'Bolus normal : 10-15 min avant le repas',
         icon: '🟢',
-        detail: 'IG bas - absorption lente, pas de risque de pic'
+        detail: 'IG bas — absorption lente, pas de risque de pic'
       };
-    } else if (ig_moyen < this.config.ig_split_threshold) {
-      // IG moyen : bolus rapide
+    }
+    if (igMean < this.config.ig_split_threshold) {
       return {
         strategy: 'fast',
         split: { before: 100, after: 0 },
         timing: 'fast',
         message: 'Bolus rapide : 5-10 min avant le repas',
         icon: '🟡',
-        detail: 'IG moyen - absorption modérée'
-      };
-    } else {
-      // IG élevé : fractionnement suggéré
-      return {
-        strategy: 'split',
-        split: { before: 60, after: 40 },
-        timing: 'split',
-        message: 'Bolus fractionné : 60% avant, 40% après 30-45 min',
-        icon: '🟠',
-        detail: 'IG élevé - risque de pic rapide puis prolongé',
-        warning: '⚠️ Surveillance glycémie recommandée à +30min et +2h'
+        detail: 'IG moyen — absorption modérée'
       };
     }
+    return {
+      strategy: 'split',
+      split: { before: 60, after: 40 },
+      timing: 'split',
+      message: 'Bolus fractionné : 60% avant, 40% après 30-45 min',
+      icon: '🟠',
+      detail: 'IG élevé — risque de pic rapide puis prolongé',
+      warning: '⚠️ Surveillance glycémie recommandée à +30min et +2h'
+    };
   }
 
+  // ─── Optimisation complète ────────────────────────────────────────────
+
   /**
-   * Optimise le calcul du bolus complet
-   * @param {Object} params - {bolus_standard, ig_moyen, cg_totale, glucides}
-   * @returns {Object} - Résultat optimisé avec détails
+   * Optimise le calcul du bolus complet.
+   *
+   * @param {object} params
+   *   Champs MealMetrics v2 : { bolus_standard, carbs_g, ig_mean, cg_total }
+   *   Champs legacy v1      : { bolus_standard, glucides, ig_moyen, cg_totale }
+   *   Les deux formes sont acceptées (rétro-compat via _normalizeMealMetrics).
+   * @returns {object} Résultat optimisé avec détails
    */
   optimizeBolus(params) {
-    const { bolus_standard, ig_moyen, cg_totale, glucides } = params;
+    const { bolus_standard } = params;
+    const { carbs_g, ig_mean, cg_total } = this._normalizeMealMetrics(params);
 
-    // 1. Calculer les facteurs d'ajustement
-    const ig_factor = this.calculateIGFactor(ig_moyen);
-    const cg_factor = this.calculateCGFactor(cg_totale);
-    
-    // 2. Facteur combiné (multiplication)
+    const ig_factor       = this.calculateIGFactor(ig_mean);
+    const cg_factor       = this.calculateCGFactor(cg_total);
     const combined_factor = ig_factor * cg_factor;
-    
-    // 3. Bolus optimisé
     const bolus_optimized = bolus_standard * combined_factor;
-    
-    // 4. Stratégie de bolus
-    const strategy = this.determineBolusStrategy(ig_moyen);
-    
-    // 5. Calcul du fractionnement si nécessaire
+    const strategy        = this.determineBolusStrategy(ig_mean);
+
     let split_doses = null;
     if (strategy.strategy === 'split') {
       split_doses = {
-        before: bolus_optimized * (strategy.split.before / 100),
-        after: bolus_optimized * (strategy.split.after / 100),
+        before:       bolus_optimized * (strategy.split.before / 100),
+        after:        bolus_optimized * (strategy.split.after  / 100),
         timing_after: '30-45 minutes'
       };
     }
 
-    // 6. Classification IG/CG
-    const ig_class = this.classifyIG(ig_moyen);
-    const cg_class = this.classifyCG(cg_totale);
+    const ig_class = this.classifyIG(ig_mean);
+    const cg_class = this.classifyCG(cg_total);
 
     return {
-      // Bolus
-      bolus_standard: bolus_standard,
-      bolus_optimized: bolus_optimized,
-      adjustment: combined_factor,
+      bolus_standard,
+      bolus_optimized,
+      adjustment:         combined_factor,
       adjustment_percent: ((combined_factor - 1) * 100).toFixed(1),
-      
-      // Facteurs détaillés
       factors: {
-        ig: {
-          value: ig_moyen,
-          factor: ig_factor,
-          adjustment_percent: ((ig_factor - 1) * 100).toFixed(1),
-          class: ig_class
-        },
-        cg: {
-          value: cg_totale,
-          factor: cg_factor,
-          adjustment_percent: ((cg_factor - 1) * 100).toFixed(1),
-          class: cg_class
-        }
+        ig: { value: ig_mean,  factor: ig_factor, adjustment_percent: ((ig_factor - 1) * 100).toFixed(1), class: ig_class },
+        cg: { value: cg_total, factor: cg_factor, adjustment_percent: ((cg_factor - 1) * 100).toFixed(1), class: cg_class },
       },
-      
-      // Stratégie
-      strategy: strategy,
-      split_doses: split_doses,
-      
-      // Recommandations
-      recommendations: this.generateRecommendations({
-        ig_moyen,
-        cg_totale,
-        glucides,
-        strategy
-      })
+      strategy,
+      split_doses,
+      recommendations: this.generateRecommendations({ ig_mean, cg_total, carbs_g, strategy }),
     };
   }
 
-  /**
-   * Classifie l'IG
-   */
+  // ─── Utilitaires ─────────────────────────────────────────────────────
+
   classifyIG(ig) {
-    if (ig < 55) return { label: 'Bas', color: 'green', icon: '🟢' };
+    if (ig < 55) return { label: 'Bas',   color: 'green',  icon: '🟢' };
     if (ig < 70) return { label: 'Moyen', color: 'yellow', icon: '🟡' };
-    return { label: 'Élevé', color: 'orange', icon: '🟠' };
+    return              { label: 'Élevé', color: 'orange', icon: '🟠' };
   }
 
-  /**
-   * Classifie la CG
-   */
   classifyCG(cg) {
-    if (cg < 10) return { label: 'Basse', color: 'green', icon: '🟢' };
+    if (cg < 10) return { label: 'Basse',  color: 'green',  icon: '🟢' };
     if (cg < 20) return { label: 'Moyenne', color: 'yellow', icon: '🟡' };
-    return { label: 'Élevée', color: 'orange', icon: '🟠' };
+    return              { label: 'Élevée', color: 'orange', icon: '🟠' };
+  }
+
+  generateRecommendations({ ig_mean, cg_total, carbs_g, strategy }) {
+    const recs = [];
+    recs.push({ type: 'timing',   icon: '⏰', text: strategy.message });
+    if (ig_mean  >= 70)  recs.push({ type: 'monitoring', icon: '📊', text: 'Surveiller la glycémie à +30min, +1h et +2h' });
+    if (cg_total >= 20)  recs.push({ type: 'caution',    icon: '⚠️', text: 'CG élevée : risque de pic glycémique prolongé' });
+    if (carbs_g  >  60)  recs.push({ type: 'activity',   icon: '🚶', text: 'Repas copieux : activité physique légère recommandée' });
+    return recs;
   }
 
   /**
-   * Génère des recommandations personnalisées
-   */
-  generateRecommendations(params) {
-    const { ig_moyen, cg_totale, glucides, strategy } = params;
-    const recommendations = [];
-
-    // Recommandation timing
-    recommendations.push({
-      type: 'timing',
-      icon: '⏰',
-      text: strategy.message
-    });
-
-    // Recommandation surveillance
-    if (ig_moyen >= 70) {
-      recommendations.push({
-        type: 'monitoring',
-        icon: '📊',
-        text: 'Surveiller la glycémie à +30min, +1h et +2h'
-      });
-    }
-
-    // Recommandation CG élevée
-    if (cg_totale >= 20) {
-      recommendations.push({
-        type: 'caution',
-        icon: '⚠️',
-        text: 'CG élevée : risque de pic glycémique prolongé'
-      });
-    }
-
-    // Recommandation activité
-    if (glucides > 60) {
-      recommendations.push({
-        type: 'activity',
-        icon: '🚶',
-        text: 'Repas copieux : activité physique légère recommandée après le repas'
-      });
-    }
-
-    return recommendations;
-  }
-
-  /**
-   * Formate l'affichage du résultat optimisé
+   * Formate le résultat pour l'affichage.
+   * Les arrondis d'affichage sont centralisés ici (pas dans optimizeBolus).
    */
   formatResult(result, step = 0.1) {
-    const rounded_standard = Math.round(result.bolus_standard / step) * step;
-    const rounded_optimized = Math.round(result.bolus_optimized / step) * step;
-
+    const round = (n) => (Math.round(n / step) * step).toFixed(1);
     return {
       ...result,
-      bolus_standard_display: rounded_standard.toFixed(1),
-      bolus_optimized_display: rounded_optimized.toFixed(1),
+      bolus_standard_display:  round(result.bolus_standard),
+      bolus_optimized_display: round(result.bolus_optimized),
       split_doses_display: result.split_doses ? {
-        before: (Math.round(result.split_doses.before / step) * step).toFixed(1),
-        after: (Math.round(result.split_doses.after / step) * step).toFixed(1),
+        before:       round(result.split_doses.before),
+        after:        round(result.split_doses.after),
         timing_after: result.split_doses.timing_after
-      } : null
+      } : null,
     };
   }
 
-  /**
-   * Compare deux stratégies de bolus (pour A/B testing futur)
-   */
-  compareStrategies(bolus1, bolus2) {
-    return {
-      difference: bolus2 - bolus1,
-      difference_percent: ((bolus2 - bolus1) / bolus1 * 100).toFixed(1),
-      recommendation: bolus2 > bolus1 ? 'increase' : 'decrease'
-    };
-  }
+  exportConfig() { return JSON.stringify(this.config, null, 2); }
 
-  /**
-   * Exporte la configuration actuelle
-   */
-  exportConfig() {
-    return JSON.stringify(this.config, null, 2);
-  }
-
-  /**
-   * Importe une configuration personnalisée
-   */
   importConfig(configJson) {
     try {
-      const newConfig = JSON.parse(configJson);
-      this.config = { ...this.config, ...newConfig };
+      this.config = { ...this.config, ...JSON.parse(configJson) };
       return true;
-    } catch (error) {
-      console.error('Config import error:', error);
+    } catch (e) {
+      console.error('BolusOptimizer: config import error', e);
       return false;
     }
   }
 }
 
-// Export global
 window.BolusOptimizer = BolusOptimizer;
+console.log('✅ BolusOptimizer chargé (v2.0)');

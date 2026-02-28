@@ -1,33 +1,214 @@
 /**
- * FoodDatabase v2.1 - RECHERCHE OPTIMISÉE
+ * MealMetrics — Contrat de données entre FoodDatabase et BolusOptimizer
+ * ──────────────────────────────────────────────────────────────────────
+ * Structure standard retournée par FoodDatabase.calculateMeal()
+ * et consommée par BolusOptimizer.optimizeBolus().
+ *
+ * Règle des arrondis :
+ *   - Le MOTEUR (calculateMeal) retourne des valeurs BRUTES (précision flottante)
+ *   - L'UI utilise MealMetrics.format() pour les arrondir à l'affichage
+ *   - Un seul endroit décide des arrondis : MealMetrics.format()
+ *
+ * @typedef {Object} MealMetrics
+ * @property {number} carbs_g   - Glucides totaux du repas (g, valeur brute)
+ * @property {number} ig_mean   - IG moyen pondéré par les glucides (entier)
+ * @property {number} cg_total  - Charge glycémique totale (valeur brute)
+ */
+const MealMetrics = {
+  /**
+   * Valeur vide (repas vide ou DB non chargée).
+   * @returns {MealMetrics}
+   */
+  empty() {
+    return { carbs_g: 0, ig_mean: 0, cg_total: 0 };
+  },
+
+  /**
+   * Formate les métriques pour l'affichage UI (arrondis).
+   * C'est ici — et seulement ici — que les arrondis d'affichage sont décidés.
+   *
+   * @param {MealMetrics} m
+   * @returns {{ carbs_g: string, ig_mean: string, cg_total: string }}
+   */
+  format(m) {
+    return {
+      carbs_g:  (Math.round(m.carbs_g  * 10) / 10).toFixed(1),  // ex: "48.5"
+      ig_mean:  String(Math.round(m.ig_mean)),                    // ex: "56"
+      cg_total: (Math.round(m.cg_total * 10) / 10).toFixed(1),  // ex: "27.2"
+    };
+  },
+
+  /**
+   * Valide qu'un objet respecte le contrat MealMetrics.
+   * @param {*} obj
+   * @returns {boolean}
+   */
+  isValid(obj) {
+    return obj !== null
+        && typeof obj === 'object'
+        && Number.isFinite(obj.carbs_g)
+        && Number.isFinite(obj.ig_mean)
+        && Number.isFinite(obj.cg_total);
+  },
+};
+
+// Exposition globale pour food-search-ui et bolus-optimizer
+if (typeof window !== 'undefined') window.MealMetrics = MealMetrics;
+
+
+/**
+ * FoodDatabase v2.2 — Loader robuste (Issue 6)
+ * ─────────────────────────────────────────────
+ * Changements v2.2 :
+ *   - Résolution du chemin JSON via document.baseURI
+ *     → fonctionne sur GitHub Pages (/repo/), WAMP, file://
+ *   - Bannière UI "Base indisponible" + bouton Recharger en cas d'échec
+ *   - Retry automatique 1× avant de déclarer l'échec
+ *
  * Système de scoring intelligent pour enfants 10 ans+
- * Déclenchement dès 2 caractères tapés
+ * Déclenchement de la recherche dès 2 caractères
  */
 
 class FoodDatabase {
   constructor() {
-    this.data = null;
+    this.data   = null;
     this.loaded = false;
   }
 
+  // ─── Résolution du chemin ──────────────────────────────────────────────
+
   /**
-   * Charge la base de données
+   * Résout le chemin vers aliments-index.json de façon robuste.
+   *
+   * Priorité :
+   *   1. Chemin explicite fourni à load()
+   *   2. Résolution depuis document.baseURI (couvre GH Pages, WAMP, file://)
+   *
+   * Pourquoi ne pas utiliser './' ?
+   *   fetch('./aliments-index.json') est relatif à l'URL courante du navigateur,
+   *   pas au fichier JS. Si l'app est servie sous /repo/, ça fonctionne.
+   *   Mais si l'URL contient un chemin profond (navigation SPA, redirect),
+   *   './' peut pointer ailleurs. document.baseURI est toujours ancré à
+   *   l'URL du document HTML — c'est la référence stable.
+   *
+   * @param {string|null} [explicitPath] - Chemin fourni manuellement (optionnel)
+   * @returns {string} URL absolue vers aliments-index.json
    */
-  async load(jsonPath) {
+  _resolveJsonPath(explicitPath) {
+    if (explicitPath) return explicitPath;
+
     try {
-      const response = await fetch(jsonPath);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      this.data = await response.json();
+      // location.href = URL exacte du document HTML chargé par le navigateur.
+      // Ex: http://acbolus/calculateur-bolus-final.html
+      //   → new URL('aliments-index.json', 'http://acbolus/calculateur-bolus-final.html')
+      //   → 'http://acbolus/aliments-index.json'  ✅
+      //
+      // Ex: https://user.github.io/repo/calculateur-bolus-final.html
+      //   → 'https://user.github.io/repo/aliments-index.json'  ✅
+      //
+      // Pourquoi PAS document.baseURI ?
+      //   Sans tag <base>, baseURI = origine seule (http://acbolus/) → manque le chemin.
+      //   location.href inclut toujours le chemin complet du fichier HTML.
+      return new URL('aliments-index.json', location.href).href;
+    } catch (_) {
+      // Fallback pour environnements sans window.location (tests node/jsdom)
+      return './aliments-index.json';
+    }
+  }
+
+  // ─── Bannière UI d'erreur ─────────────────────────────────────────────
+
+  /**
+   * Affiche une bannière d'erreur via Notify.banner (si disponible)
+   * ou fallback inline autonome.
+   *
+   * @param {string} jsonPath - Chemin tenté
+   * @param {string} reason   - Message d'erreur court
+   */
+  _showErrorBanner(jsonPath, reason) {
+    if (window.Notify?.banner) {
+      window.Notify.banner('Base de données aliments indisponible', 'error', {
+        id:             'db-error-banner',
+        targetSelector: '#foodSearchPanel',
+        detail:         `Chemin tenté : ${jsonPath}`,
+        actionLabel:    '🔄 Recharger la page',
+        onAction:       () => location.reload(),
+      });
+      return;
+    }
+
+    // Fallback autonome si Notify pas encore chargé
+    console.warn('⚠️ FoodDatabase : Notify non disponible — bannière fallback inline');
+    const el = document.createElement('div');
+    el.id = 'db-error-banner';
+    el.style.cssText = 'margin:12px;padding:16px;border-radius:14px;border:1px solid rgba(251,113,133,0.45);background:rgba(251,113,133,0.12);color:rgba(255,255,255,0.90);font-size:14px;font-weight:800;line-height:1.5';
+    el.innerHTML = `<div style="font-size:18px;margin-bottom:8px">⚠️ Base de données indisponible</div><div style="font-weight:500;margin-bottom:4px">${reason}</div><div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:10px;font-family:monospace">${jsonPath}</div><button onclick="location.reload()" style="padding:8px 18px;background:rgba(110,231,255,0.15);border:1px solid rgba(110,231,255,0.50);color:#6ee7ff;border-radius:50px;font-weight:900;font-size:13px;cursor:pointer">🔄 Recharger</button>`;
+    const existing = document.getElementById('db-error-banner');
+    if (existing) existing.remove();
+    (document.getElementById('foodSearchPanel') || document.body).prepend(el);
+  }
+
+  // ─── Chargement ───────────────────────────────────────────────────────
+
+  /**
+   * Charge la base de données aliments.
+   *
+   * @param {string|null} [jsonPath] - Chemin explicite (optionnel).
+   *   Si omis, résolution automatique via document.baseURI.
+   * @param {object} [opts]
+   * @param {boolean} [opts.retry=true] - Retry 1× sur erreur réseau avant d'échouer
+   * @returns {Promise<boolean>} true si succès, false si échec définitif
+   */
+  async load(jsonPath = null, opts = { retry: true }) {
+    const resolvedPath = this._resolveJsonPath(jsonPath);
+
+    const _attempt = async () => {
+      const response = await fetch(resolvedPath);
+      if (!response.ok) throw new Error(`HTTP ${response.status} — ${resolvedPath}`);
+      return response.json();
+    };
+
+    try {
+      // Première tentative
+      this.data   = await _attempt();
       this.loaded = true;
-      
       console.log(`✅ ${this.getTotalAliments()} aliments chargés (v${this.data.version})`);
       return true;
-    } catch (error) {
-      console.error('❌ Erreur chargement base de données:', error);
+
+    } catch (firstError) {
+      // Retry 1× (réseau instable, SW en cache, etc.)
+      if (opts.retry) {
+        console.warn(`⚠️ FoodDatabase : 1ère tentative échouée, retry dans 1s… (${firstError.message})`);
+        await new Promise(r => setTimeout(r, 1000));
+
+        try {
+          this.data   = await _attempt();
+          this.loaded = true;
+          console.log(`✅ ${this.getTotalAliments()} aliments chargés après retry (v${this.data.version})`);
+          return true;
+        } catch (retryError) {
+          // Échec définitif après retry
+          this._onLoadFail(resolvedPath, retryError);
+          return false;
+        }
+      }
+
+      this._onLoadFail(resolvedPath, firstError);
       return false;
     }
   }
+
+  /**
+   * Gestion centralisée de l'échec de chargement.
+   * @private
+   */
+  _onLoadFail(path, error) {
+    const reason = error.message || 'Erreur réseau inconnue';
+    console.error(`❌ FoodDatabase : échec chargement définitif — ${reason}`);
+    this._showErrorBanner(path, reason);
+  }
+
+  // ─── Normalisation ────────────────────────────────────────────────────
 
   /**
    * Normalise une chaîne (minuscule, sans accents, sans espaces multiples)
@@ -43,70 +224,67 @@ class FoodDatabase {
       .trim();
   }
 
+  // ─── Recherche ────────────────────────────────────────────────────────
+
   /**
-   * RECHERCHE PRINCIPALE - VERSION OPTIMISÉE
-   * 
+   * RECHERCHE PRINCIPALE — VERSION OPTIMISÉE
+   *
    * Logique :
-   * 1. Recherche dans les aliments (priorité absolue)
-   * 2. Si < 3 résultats ET requête ≥ 4 lettres → recherche catégorie
-   * 
+   *   1. Recherche dans les aliments (priorité absolue)
+   *   2. Si < 3 résultats ET requête ≥ 4 lettres → recherche catégorie
+   *
    * Système de scoring :
-   * - 100 : Match exact du nom
-   * - 90  : Nom commence par la recherche
-   * - 85  : Début d'un mot dans le nom
-   * - 80  : Synonyme exact
-   * - 75  : Synonyme commence par la recherche
-   * - 60  : Contient dans le nom
-   * - 50  : Contient dans un synonyme
-   * - 40  : Match de catégorie
-   * 
-   * @param {string} query - Requête de recherche
+   *   100 : Match exact du nom
+   *    90 : Nom commence par la recherche
+   *    85 : Début d'un mot dans le nom
+   *    80 : Synonyme exact
+   *    75 : Synonyme commence par la recherche
+   *    60 : Contient dans le nom
+   *    50 : Contient dans un synonyme
+   *    40 : Match de catégorie
+   *
+   * @param {string} query      - Requête de recherche
    * @param {number} maxResults - Nombre max de résultats (défaut: 8)
-   * @returns {Array} - Liste d'aliments triés par pertinence
+   * @returns {Array} Liste d'aliments triés par pertinence
    */
   search(query, maxResults = 8) {
     if (!this.loaded || !query || query.length < 2) return [];
-    
-    const queryNorm = this.normalize(query);
-    const results = [];
-    const seen = new Set();
 
-    // ===== ÉTAPE 1 : RECHERCHE DANS LES ALIMENTS =====
+    const queryNorm = this.normalize(query);
+    const results   = [];
+    const seen      = new Set();
+
+    // ── Étape 1 : Recherche dans les aliments ────────────────────────
     for (const category of this.data.categories) {
       for (const aliment of category.aliments) {
         if (seen.has(aliment.id)) continue;
-        
         const match = this.matchAliment(aliment, queryNorm);
         if (match.matched) {
           results.push({
             ...aliment,
-            category_id: category.id,
-            category_nom: category.nom,
+            category_id:   category.id,
+            category_nom:  category.nom,
             category_icon: category.icon,
-            score: match.score
+            score:         match.score
           });
           seen.add(aliment.id);
         }
       }
     }
 
-    // ===== ÉTAPE 2 : RECHERCHE PAR CATÉGORIE (si peu de résultats) =====
+    // ── Étape 2 : Recherche par catégorie (si peu de résultats) ──────
     if (results.length < 3 && queryNorm.length >= 4) {
       for (const category of this.data.categories) {
         const catNorm = this.normalize(category.nom);
-        
-        // Match catégorie
         if (catNorm.includes(queryNorm)) {
-          // Ajouter TOUS les aliments de cette catégorie
           for (const aliment of category.aliments) {
             if (seen.has(aliment.id)) continue;
-            
             results.push({
               ...aliment,
-              category_id: category.id,
-              category_nom: category.nom,
+              category_id:   category.id,
+              category_nom:  category.nom,
               category_icon: category.icon,
-              score: 40  // Score catégorie
+              score:         40
             });
             seen.add(aliment.id);
           }
@@ -114,115 +292,82 @@ class FoodDatabase {
       }
     }
 
-    // ===== ÉTAPE 3 : TRI ET LIMITATION =====
+    // ── Étape 3 : Tri et limitation ───────────────────────────────────
     return results
-      .sort((a, b) => {
-        // Tri principal par score
-        if (b.score !== a.score) return b.score - a.score;
-        
-        // Tri secondaire par nom (alphabétique)
-        return a.nom.localeCompare(b.nom);
-      })
+      .sort((a, b) => b.score !== a.score ? b.score - a.score : a.nom.localeCompare(b.nom))
       .slice(0, maxResults);
   }
 
   /**
-   * Match un aliment avec une requête
-   * Retourne : {matched: boolean, score: number}
+   * Match un aliment avec une requête normalisée.
+   * @returns {{ matched: boolean, score: number }}
    */
   matchAliment(aliment, queryNorm) {
     const nomNorm = this.normalize(aliment.nom);
-    
-    // ===== SCORE 100 : Match EXACT du nom =====
-    if (nomNorm === queryNorm) {
-      return { matched: true, score: 100 };
-    }
-    
-    // ===== SCORE 90 : Nom COMMENCE par la recherche =====
-    if (nomNorm.startsWith(queryNorm)) {
-      return { matched: true, score: 90 };
-    }
-    
-    // ===== SCORE 85 : DÉBUT D'UN MOT dans le nom =====
+
+    if (nomNorm === queryNorm)            return { matched: true, score: 100 };
+    if (nomNorm.startsWith(queryNorm))   return { matched: true, score: 90  };
+
     const words = nomNorm.split(' ');
     for (const word of words) {
-      if (word.startsWith(queryNorm)) {
-        return { matched: true, score: 85 };
-      }
+      if (word.startsWith(queryNorm))    return { matched: true, score: 85  };
     }
-    
-    // ===== SCORE 80-75 : Match dans les SYNONYMES =====
-    if (aliment.synonymes && aliment.synonymes.length > 0) {
+
+    if (aliment.synonymes?.length > 0) {
       for (const syn of aliment.synonymes) {
         const synNorm = this.normalize(syn);
-        
-        // SCORE 80 : Synonyme exact
-        if (synNorm === queryNorm) {
-          return { matched: true, score: 80 };
-        }
-        
-        // SCORE 75 : Synonyme commence par
-        if (synNorm.startsWith(queryNorm)) {
-          return { matched: true, score: 75 };
-        }
+        if (synNorm === queryNorm)        return { matched: true, score: 80  };
+        if (synNorm.startsWith(queryNorm))return { matched: true, score: 75  };
       }
     }
-    
-    // ===== SCORE 60 : CONTIENT dans le nom =====
-    if (nomNorm.includes(queryNorm)) {
-      return { matched: true, score: 60 };
-    }
-    
-    // ===== SCORE 50 : CONTIENT dans un synonyme =====
-    if (aliment.synonymes && aliment.synonymes.length > 0) {
+
+    if (nomNorm.includes(queryNorm))     return { matched: true, score: 60  };
+
+    if (aliment.synonymes?.length > 0) {
       for (const syn of aliment.synonymes) {
-        const synNorm = this.normalize(syn);
-        if (synNorm.includes(queryNorm)) {
-          return { matched: true, score: 50 };
-        }
+        if (this.normalize(syn).includes(queryNorm)) return { matched: true, score: 50 };
       }
     }
-    
-    // Pas de match
+
     return { matched: false, score: 0 };
   }
 
+  // ─── Accès aux données ────────────────────────────────────────────────
+
   /**
-   * Récupère un aliment par ID
+   * Récupère un aliment par ID.
+   * @returns {Object|null}
    */
   getById(id) {
     if (!this.loaded) return null;
-    
     for (const category of this.data.categories) {
       const aliment = category.aliments.find(a => a.id === id);
       if (aliment) {
         return {
           ...aliment,
-          category_id: category.id,
-          category_nom: category.nom,
+          category_id:   category.id,
+          category_nom:  category.nom,
           category_icon: category.icon
         };
       }
     }
-    
     console.error(`❌ Aliment ${id} introuvable`);
     return null;
   }
 
   /**
-   * Calcule les totaux d'un repas
-   * 
-   * @param {Array} items - Liste d'objets {aliment_id, quantite_g}
-   * @returns {Object} - {glucides, ig_moyen, cg_totale}
+   * Calcule les totaux d'un repas.
+   * Retourne des valeurs BRUTES (pas d'arrondi) — l'UI appelle MealMetrics.format().
+   *
+   * @param {Array<{aliment_id: string, quantite_g: number}>} items
+   * @returns {MealMetrics} { carbs_g, ig_mean, cg_total }
    */
   calculateMeal(items) {
-    if (!items || items.length === 0) {
-      return { glucides: 0, ig_moyen: 0, cg_totale: 0 };
-    }
+    if (!items || items.length === 0) return MealMetrics.empty();
 
-    let totalGlucides = 0;
-    let totalCG = 0;
-    let weightedIG = 0;
+    let totalCarbs  = 0;
+    let totalCG     = 0;
+    let weightedIG  = 0;
 
     for (const item of items) {
       const aliment = this.getById(item.aliment_id);
@@ -230,97 +375,63 @@ class FoodDatabase {
         console.warn(`⚠️ Aliment ${item.aliment_id} non trouvé dans calculateMeal`);
         continue;
       }
-
-      // Calcul proportionnel à la quantité (pour 100g)
-      const glucides = (aliment.glucides * item.quantite_g) / 100;
-      const cg = (aliment.cg * item.quantite_g) / 100;
-
-      totalGlucides += glucides;
-      totalCG += cg;
-      
-      // IG moyen pondéré par les glucides
-      weightedIG += aliment.ig * glucides;
+      const carbs = (aliment.glucides * item.quantite_g) / 100;
+      const cg    = (aliment.cg       * item.quantite_g) / 100;
+      totalCarbs  += carbs;
+      totalCG     += cg;
+      weightedIG  += aliment.ig * carbs;
     }
 
-    // IG moyen pondéré (arrondi)
-    const igMoyen = totalGlucides > 0 ? 
-      Math.round(weightedIG / totalGlucides) : 0;
-
     return {
-      glucides: Math.round(totalGlucides * 10) / 10,  // 1 décimale
-      ig_moyen: igMoyen,
-      cg_totale: Math.round(totalCG * 10) / 10        // 1 décimale
+      carbs_g:  totalCarbs,                                            // brut
+      ig_mean:  totalCarbs > 0 ? Math.round(weightedIG / totalCarbs) : 0,  // entier (physiologiquement pertinent)
+      cg_total: totalCG,                                               // brut
     };
   }
 
   /**
-   * Suggère un timing de bolus selon l'IG moyen
-   * 
-   * @param {number} igMoyen - Index glycémique moyen du repas
-   * @returns {Object} - {timing, icon, message}
+   * Suggère un timing de bolus selon l'IG moyen.
+   * @param {number} igMean - IG moyen du repas (champ ig_mean de MealMetrics)
+   * @returns {{ timing: string, icon: string, message: string }}
    */
-  suggestBolusTiming(igMoyen) {
-    if (igMoyen < 55) {
-      return {
-        timing: 'normal',
-        icon: '🟢',
-        message: 'Bolus normal : 10-15 min avant le repas'
-      };
-    } else if (igMoyen < 70) {
-      return {
-        timing: 'fast',
-        icon: '🟡',
-        message: 'Bolus rapide : 5-10 min avant le repas'
-      };
-    } else {
-      return {
-        timing: 'split',
-        icon: '🔴',
-        message: 'Bolus fractionné suggéré : 60% avant, 40% après 30-45 min'
-      };
-    }
+  suggestBolusTiming(igMean) {
+    if (igMean < 55) return { timing: 'normal', icon: '🟢', message: 'Bolus normal : 10-15 min avant le repas' };
+    if (igMean < 70) return { timing: 'fast',   icon: '🟡', message: 'Bolus rapide : 5-10 min avant le repas' };
+    return              { timing: 'split',  icon: '🔴', message: 'Bolus fractionné suggéré : 60% avant, 40% après 30-45 min' };
   }
 
-  /**
-   * Compte le nombre total d'aliments dans la base
-   */
+  /** Nombre total d'aliments dans la base. */
   getTotalAliments() {
     if (!this.data) return 0;
     return this.data.categories.reduce((sum, cat) => sum + cat.aliments.length, 0);
   }
 
-  /**
-   * Récupère toutes les catégories
-   */
+  /** Toutes les catégories. */
   getCategories() {
     return this.data ? this.data.categories : [];
   }
 
-  /**
-   * Récupère une catégorie par ID
-   */
+  /** Catégorie par ID. */
   getCategoryById(categoryId) {
     if (!this.data) return null;
     return this.data.categories.find(cat => cat.id === categoryId) || null;
   }
 
-  /**
-   * Récupère tous les aliments d'une catégorie
-   */
+  /** Aliments d'une catégorie. */
   getAlimentsByCategory(categoryId) {
     const category = this.getCategoryById(categoryId);
     if (!category) return [];
-    
     return category.aliments.map(aliment => ({
       ...aliment,
-      category_id: category.id,
-      category_nom: category.nom,
+      category_id:   category.id,
+      category_nom:  category.nom,
       category_icon: category.icon
     }));
   }
 }
 
-// Export global pour utilisation dans le HTML
+// Export global
 if (typeof window !== 'undefined') {
   window.FoodDatabase = FoodDatabase;
 }
+console.log('✅ FoodDatabase chargé (v2.2)');

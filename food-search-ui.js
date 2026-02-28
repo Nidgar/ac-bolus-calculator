@@ -1,11 +1,17 @@
 /**
- * FoodSearchUI v2.1 - INTERFACE CORRIGÉE ET FONCTIONNELLE
+ * FoodSearchUI v2.4 - Loader DB robuste (Issue 6)
  * - Recherche opérationnelle dès 2 caractères
  * - Bouton "Ajouter" fonctionnel avec gestion des doublons
  * - Modification des quantités en temps réel
  * - Suppression d'aliments
- * - Sauvegarde automatique (8h)
+ * - Sauvegarde automatique (8h) — via AppStorage (TTL + schemaVersion)
  * - Validation et injection dans le calculateur
+ * - Chemin JSON résolu via FoodDatabase (document.baseURI, GH Pages safe)
+ * - Bannière UI en cas d'échec de chargement DB
+ *
+ * IMPORTANT : N'instancie PLUS FoodSearchUI automatiquement.
+ * L'initialisation est déléguée à app.js (bootstrap unique).
+ * Dépendances : AppStorage (storage.js), FoodDatabase (food-database.js)
  */
 
 class FoodSearchUI {
@@ -14,12 +20,12 @@ class FoodSearchUI {
     this.db = null;
     this.myPlate = [];
     this.isOpen = false;
-    this.storageKey = 'bc_meal_composition_v1';
-    this.storageExpiry = 8 * 60 * 60 * 1000; // 8 heures en ms
-    
     // Limites de quantité
     this.MIN_QUANTITY = 1;
     this.MAX_QUANTITY = 500;
+    
+    // Garde-fou listeners : attachés une seule fois
+    this._listenersAttached = false;
     
     this.init();
   }
@@ -29,32 +35,54 @@ class FoodSearchUI {
    */
   async init() {
     try {
-      // Charger la base de données
       this.db = new FoodDatabase();
-      const success = await this.db.load('./aliments-index.json');
-      
+
+      // Pas de chemin explicite → FoodDatabase résout via document.baseURI
+      // (compatible GitHub Pages /repo/, WAMP, file://)
+      const success = await this.db.load();
+
       if (!success) {
-        console.error('❌ Impossible de charger la base d\'aliments');
+        // La bannière UI a déjà été injectée par FoodDatabase._onLoadFail()
+        // On désactive le toggle pour éviter d'ouvrir un panneau vide
+        this._disableToggleOnDBFail();
         return;
       }
-      
+
       console.log('✅ FoodSearchUI : Base d\'aliments chargée');
-      
-      // Charger le repas sauvegardé s'il existe
       this.loadSavedMeal();
-      
-      // Attacher les événements
       this.attachEvents();
-      
+
     } catch (error) {
+      Notify.toast('Erreur initialisation — rechargez la page', 'error');
       console.error('❌ Erreur initialisation FoodSearchUI:', error);
+      this._disableToggleOnDBFail();
     }
   }
 
   /**
-   * Attache les événements aux éléments DOM
+   * Désactive le bouton toggle et affiche un état dégradé.
+   * Appelé uniquement si la DB n'a pas pu charger.
+   * @private
+   */
+  _disableToggleOnDBFail() {
+    const toggleBtn = document.getElementById('foodSearchToggle');
+    if (toggleBtn) {
+      toggleBtn.disabled = true;
+      toggleBtn.title    = 'Base de données indisponible — rechargez la page';
+      toggleBtn.style.opacity = '0.4';
+    }
+  }
+
+  /**
+   * Attache les événements aux éléments DOM.
+   * Idempotent : ne s'exécute qu'une seule fois grâce au flag _listenersAttached.
    */
   attachEvents() {
+    if (this._listenersAttached) {
+      console.warn('⚠️ FoodSearchUI.attachEvents() déjà appelé — skip');
+      return;
+    }
+
     // Toggle du panneau
     const toggleBtn = document.getElementById('foodSearchToggle');
     if (toggleBtn) {
@@ -72,6 +100,42 @@ class FoodSearchUI {
     if (validateBtn) {
       validateBtn.addEventListener('click', () => this.validateMeal());
     }
+
+    // ── Délégation sur #searchResults (boutons "Ajouter") ─────────────────
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) {
+      searchResults.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="add"][data-food-id]');
+        if (btn) this.addToPlate(btn.dataset.foodId);
+      });
+    }
+
+    // ── Délégation sur #plateItems (quantité + supprimer) ─────────────────
+    const plateItems = document.getElementById('plateItems');
+    if (plateItems) {
+      // Changement de quantité
+      plateItems.addEventListener('change', (e) => {
+        const input = e.target.closest('input[data-action="qty"][data-aliment-id]');
+        if (input) this.updateQuantity(input.dataset.alimentId, input.value);
+      });
+      // Suppression d'un aliment
+      plateItems.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="remove"][data-aliment-id]');
+        if (btn) this.removeFromPlate(btn.dataset.alimentId);
+      });
+    }
+
+    // ── Délégation sur #plateSummary (reset assiette) ─────────────────────
+    const plateSummary = document.getElementById('plateSummary');
+    if (plateSummary) {
+      plateSummary.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="reset"]');
+        if (btn) this.resetPlate();
+      });
+    }
+
+    this._listenersAttached = true;
+    console.log('✅ FoodSearchUI : listeners attachés');
   }
 
   /**
@@ -139,7 +203,8 @@ class FoodSearchUI {
         </div>
         <button 
           class="add" 
-          onclick="window.foodSearchUI.addToPlate('${food.id}')"
+          data-action="add"
+          data-food-id="${food.id}"
           aria-label="Ajouter ${food.nom}"
         >
           + Ajouter
@@ -154,6 +219,7 @@ class FoodSearchUI {
   addToPlate(alimentId) {
     const food = this.db.getById(alimentId);
     if (!food) {
+      Notify.toast(`Aliment introuvable (id: ${alimentId})`, 'warn');
       console.error(`❌ Aliment ${alimentId} introuvable`);
       return;
     }
@@ -161,9 +227,7 @@ class FoodSearchUI {
     // Vérifier si déjà dans l'assiette
     const existing = this.myPlate.find(item => item.aliment_id === alimentId);
     if (existing) {
-      // Message d'erreur user-friendly
-      const message = `❌ ${food.nom} est déjà dans ton assiette !`;
-      this.showNotification(message, 'warning');
+      this.showNotification(`❌ ${food.nom} est déjà dans ton assiette !`, 'warning');
       return;
     }
 
@@ -175,17 +239,14 @@ class FoodSearchUI {
 
     console.log(`✅ Ajouté : ${food.nom} (${food.portion_usuelle.quantite}g)`);
 
-    // Mettre à jour l'affichage
     this.updatePlate();
     
-    // Clear la recherche
     const searchInput = document.getElementById('foodSearchInput');
     if (searchInput) {
       searchInput.value = '';
       this.displaySearchResults([]);
     }
     
-    // Feedback CENTRÉ (comme suppression)
     this.showCenteredNotification(`✅ ${food.nom} ajouté !`, 'success');
   }
 
@@ -196,15 +257,11 @@ class FoodSearchUI {
     const food = this.db.getById(alimentId);
     const foodName = food ? food.nom : 'Aliment';
     
-    // Suppression directe - PAS de confirmation
     this.myPlate = this.myPlate.filter(item => item.aliment_id !== alimentId);
     
     console.log(`🗑️ Supprimé : ${foodName}`);
     
-    // Mise à jour
     this.updatePlate();
-    
-    // Feedback centré (même style qu'ajout)
     this.showCenteredNotification(`🗑️ ${foodName} supprimé`, 'info');
   }
 
@@ -212,7 +269,6 @@ class FoodSearchUI {
    * Met à jour la quantité d'un aliment
    */
   updateQuantity(alimentId, newQuantity) {
-    // Validation de la quantité
     let qty = parseInt(newQuantity);
     
     if (isNaN(qty) || qty < this.MIN_QUANTITY) {
@@ -220,17 +276,14 @@ class FoodSearchUI {
     }
     
     if (qty > this.MAX_QUANTITY) {
-      alert(`⚠️ Maximum ${this.MAX_QUANTITY}g par aliment.\nPour une plus grosse portion, ajoute l'aliment plusieurs fois !`);
+      Notify.toast(`⚠️ Maximum ${this.MAX_QUANTITY}g — ajoute l'aliment plusieurs fois si besoin`, 'warn', 4000);
       qty = this.MAX_QUANTITY;
     }
     
-    // Mise à jour
     const item = this.myPlate.find(i => i.aliment_id === alimentId);
     if (item) {
       item.quantite_g = qty;
       console.log(`📝 Quantité mise à jour : ${alimentId} = ${qty}g`);
-      
-      // Recalcul immédiat
       this.updatePlate();
     }
   }
@@ -245,7 +298,6 @@ class FoodSearchUI {
 
     if (!container || !summaryContainer) return;
 
-    // ===== ASSIETTE VIDE =====
     if (this.myPlate.length === 0) {
       container.innerHTML = '<div class="plateEmpty">🍽️ Ton assiette est vide</div>';
       summaryContainer.innerHTML = '';
@@ -254,7 +306,6 @@ class FoodSearchUI {
       return;
     }
 
-    // ===== AFFICHAGE DES ALIMENTS =====
     container.innerHTML = this.myPlate.map(item => {
       const food = this.db.getById(item.aliment_id);
       if (!food) return '';
@@ -273,12 +324,14 @@ class FoodSearchUI {
             min="${this.MIN_QUANTITY}"
             max="${this.MAX_QUANTITY}"
             step="10"
-            onchange="window.foodSearchUI.updateQuantity('${item.aliment_id}', this.value)"
+            data-action="qty"
+            data-aliment-id="${item.aliment_id}"
             aria-label="Quantité de ${food.nom} en grammes"
           >
           <span class="quantity-unit">g</span>
           <button 
-            onclick="window.foodSearchUI.removeFromPlate('${item.aliment_id}')"
+            data-action="remove"
+            data-aliment-id="${item.aliment_id}"
             aria-label="Supprimer ${food.nom}"
             class="btn-remove"
           >
@@ -288,36 +341,34 @@ class FoodSearchUI {
       `;
     }).join('');
 
-    // ===== CALCUL DES TOTAUX =====
-    const meal = this.db.calculateMeal(this.myPlate);
-    const timing = this.db.suggestBolusTiming(meal.ig_moyen);
+    const meal   = this.db.calculateMeal(this.myPlate);  // MealMetrics brut
+    const fmt    = MealMetrics.format(meal);             // arrondis UI ici uniquement
+    const timing = this.db.suggestBolusTiming(meal.ig_mean);
 
-    // Couleur selon IG
-    const igColor = this.getIGColor(meal.ig_moyen);
-    const cgColor = this.getCGColor(meal.cg_totale);
+    const igColor = this.getIGColor(meal.ig_mean);
+    const cgColor = this.getCGColor(meal.cg_total);
 
-    // ===== AFFICHAGE DU RÉSUMÉ =====
     summaryContainer.innerHTML = `
       <div class="plateSummary">
         <div class="summaryGrid">
           <div class="summaryItem">
             <div class="summaryLabel">Glucides</div>
-            <div class="summaryValue" style="color: var(--good);">${meal.glucides}g</div>
+            <div class="summaryValue" style="color: var(--good);">${fmt.carbs_g}g</div>
           </div>
           <div class="summaryItem">
             <div class="summaryLabel">IG moyen</div>
-            <div class="summaryValue" style="color: ${igColor};">${meal.ig_moyen}</div>
+            <div class="summaryValue" style="color: ${igColor};">${fmt.ig_mean}</div>
           </div>
           <div class="summaryItem">
             <div class="summaryLabel">CG totale</div>
-            <div class="summaryValue" style="color: ${cgColor};">${meal.cg_totale}</div>
+            <div class="summaryValue" style="color: ${cgColor};">${fmt.cg_total}</div>
           </div>
         </div>
         <div class="timingSuggestion">
           ${timing.icon} ${timing.message}
         </div>
         <button 
-          onclick="window.foodSearchUI.resetPlate()" 
+          data-action="reset"
           style="width:100%; padding:10px; margin-top:10px; background:var(--bad); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:800;"
           aria-label="Effacer tout le contenu de l'assiette"
         >
@@ -326,12 +377,10 @@ class FoodSearchUI {
       </div>
     `;
 
-    // ===== ACTIVATION BOUTON VALIDATION =====
     if (validateBtn) {
       validateBtn.disabled = false;
     }
     
-    // ===== SAUVEGARDE AUTO =====
     this.saveMeal();
   }
 
@@ -341,25 +390,21 @@ class FoodSearchUI {
   validateMeal() {
     if (this.myPlate.length === 0) return;
 
-    const meal = this.db.calculateMeal(this.myPlate);
+    const meal = this.db.calculateMeal(this.myPlate);  // MealMetrics brut
 
-    // Injecter dans le champ glucides
     if (this.carbsInput) {
-      this.carbsInput.value = Math.round(meal.glucides);
-      
-      // Trigger les événements pour mettre à jour le calcul du bolus
+      this.carbsInput.value = Math.round(meal.carbs_g); // arrondi entier pour le champ
       this.carbsInput.dispatchEvent(new Event('input', { bubbles: true }));
       this.carbsInput.dispatchEvent(new Event('change', { bubbles: true }));
       this.carbsInput.dispatchEvent(new Event('blur', { bubbles: true }));
     }
 
-    // Fermer le panneau
     this.togglePanel();
 
-    // Feedback dans le status du calculateur - Layout gauche/droite
     const statusNode = document.getElementById('statusFast') || document.getElementById('status');
     if (statusNode) {
-      const timing = this.db.suggestBolusTiming(meal.ig_moyen);
+      const timing  = this.db.suggestBolusTiming(meal.ig_mean);
+      const fmtVal  = MealMetrics.format(meal);
       statusNode.innerHTML = `
         <div style="display: flex; width: 100%; gap: 16px; align-items: flex-start;">
           <div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;">
@@ -368,7 +413,7 @@ class FoodSearchUI {
           </div>
           <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
             <div style="font-weight: 900; font-size: 16px;">
-              🍞 ${meal.glucides}g de glucides • 📊 IG moyen: ${meal.ig_moyen}
+              🍞 ${fmtVal.carbs_g}g de glucides • 📊 IG moyen: ${fmtVal.ig_mean}
             </div>
             <div style="padding: 10px 12px; background: rgba(255,255,255,0.1); border-radius: 8px; font-weight: 800; font-size: 14px;">
               ${timing.icon} ${timing.message}
@@ -380,9 +425,7 @@ class FoodSearchUI {
       statusNode.style.display = 'block';
     }
 
-    console.log(`✅ Repas validé : ${meal.glucides}g glucides, IG ${meal.ig_moyen}`);
-
-    // L'assiette reste sauvegardée (ne pas reset)
+    console.log(`✅ Repas validé : ${MealMetrics.format(meal).carbs_g}g glucides, IG ${meal.ig_mean}`);
   }
 
   /**
@@ -391,375 +434,85 @@ class FoodSearchUI {
   resetPlate() {
     if (this.myPlate.length === 0) return;
     
-    // Confirmation avec modal bordeaux
     this.showConfirmDialog(
       '🗑️ Effacer tout le contenu de l\'assiette ?',
       'Tous les aliments seront supprimés.',
       () => {
-        // Confirmé - effacer tout
         this.myPlate = [];
         this.updatePlate();
         this.clearSavedMeal();
         console.log('🗑️ Assiette réinitialisée');
-        
-        // Feedback centré
         this.showCenteredNotification('🗑️ Assiette effacée', 'error');
       },
-      'error'  // Type bordeaux/rouge
+      'error'
     );
   }
 
-  /**
-   * Sauvegarde le repas dans localStorage
-   */
   saveMeal() {
-    const now = Date.now();
-    const expiresAt = now + this.storageExpiry;
-    
-    const data = {
-      plate: this.myPlate,
-      savedAt: now,
-      expiresAt: expiresAt
-    };
-    
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-      console.log(`💾 Repas sauvegardé (${this.myPlate.length} aliments, expire dans 8h)`);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde repas:', error);
+    const ok = AppStorage.set(
+      AppStorage.KEYS.meal,
+      this.myPlate,
+      { ttl: AppStorage.TTL.meal, schemaVersion: AppStorage.SCHEMA.meal }
+    );
+    if (!ok) {
+      Notify.toast('Sauvegarde impossible — stockage plein ?', 'error');
+      console.error('❌ FoodSearchUI : échec sauvegarde repas (quota ?)');
     }
   }
 
-  /**
-   * Charge le repas sauvegardé
-   */
   loadSavedMeal() {
     try {
-      const stored = localStorage.getItem(this.storageKey);
-      if (!stored) return;
-      
-      const data = JSON.parse(stored);
-      const now = Date.now();
-      
-      // Vérifier expiration (8h)
-      if (data.expiresAt && now > data.expiresAt) {
-        console.log('⏰ Repas expiré (> 8h), suppression');
-        localStorage.removeItem(this.storageKey);
-        return;
-      }
-      
-      // Restaurer l'assiette
-      if (data.plate && Array.isArray(data.plate)) {
-        this.myPlate = data.plate;
+      const plate = AppStorage.get(
+        AppStorage.KEYS.meal,
+        { schemaVersion: AppStorage.SCHEMA.meal }
+      );
+      if (!plate) return; // absent, expiré ou version obsolète → assiette vide sans erreur
+      if (Array.isArray(plate)) {
+        this.myPlate = plate;
         console.log(`✅ Repas restauré (${this.myPlate.length} aliments)`);
-        
-        // Mettre à jour l'affichage si le panneau est visible
         const panel = document.getElementById('foodSearchPanel');
         if (panel && !panel.classList.contains('hidden')) {
           this.updatePlate();
         }
       }
     } catch (error) {
-      console.error('❌ Erreur chargement repas:', error);
-      localStorage.removeItem(this.storageKey);
+      console.error('❌ FoodSearchUI : erreur chargement repas:', error);
+      AppStorage.clear(AppStorage.KEYS.meal);
     }
   }
 
-  /**
-   * Efface le repas sauvegardé
-   */
   clearSavedMeal() {
-    localStorage.removeItem(this.storageKey);
-    console.log('🗑️ Repas sauvegardé effacé');
+    AppStorage.clear(AppStorage.KEYS.meal);
   }
 
-  /**
-   * Affiche une notification temporaire
-   */
+  // ─── Notifications (délèguent à window.Notify) ────────────────────────
+  // Wrappers conservés pour les appels internes existants.
+
   showNotification(message, type = 'info') {
-    // Créer l'élément de notification s'il n'existe pas
-    let notification = document.getElementById('food-notification');
-    if (!notification) {
-      notification = document.createElement('div');
-      notification.id = 'food-notification';
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 10px;
-        font-weight: 800;
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      `;
-      document.body.appendChild(notification);
-    }
-
-    // Couleur selon le type
-    const colors = {
-      success: 'var(--good)',
-      warning: 'var(--warn)',
-      info: 'var(--cool)',
-      error: 'var(--bad)'
-    };
-    notification.style.backgroundColor = colors[type] || colors.info;
-    notification.style.color = 'white';
-    notification.textContent = message;
-
-    // Afficher
-    notification.style.opacity = '1';
-
-    // Masquer après 2 secondes
-    setTimeout(() => {
-      notification.style.opacity = '0';
-    }, 2000);
+    Notify.toast(message, type === 'warning' ? 'warn' : type);
   }
 
-  /**
-   * Affiche une confirmation centrée (pour suppression)
-   */
   showConfirmDialog(title, message, onConfirm, type = 'warning') {
-    // Couleurs selon le type
-    const colors = {
-      warning: 'var(--warn)',  // Orangé
-      error: 'var(--bad)'       // Bordeaux/Rouge
-    };
-    const bgColor = colors[type] || colors.warning;
-    
-    // Créer l'overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10001;
-      animation: fadeIn 0.2s ease;
-    `;
-
-    // Icône selon le type
-    const icon = type === 'error' ? '🗑️' : '⚠️';
-
-    // Créer la modal
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: ${bgColor};
-      color: white;
-      padding: 24px;
-      border-radius: 16px;
-      max-width: 400px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-      animation: slideIn 0.3s ease;
-    `;
-
-    modal.innerHTML = `
-      <div style="font-size: 48px; margin-bottom: 12px;">${icon}</div>
-      <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 900;">${title}</h3>
-      <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 14px;">${message}</p>
-      <div style="display: flex; gap: 12px; justify-content: center;">
-        <button id="confirmBtn" style="
-          flex: 1;
-          padding: 12px 20px;
-          background: rgba(255, 255, 255, 0.95);
-          color: ${type === 'error' ? '#dc2626' : '#c2410c'};
-          border: none;
-          border-radius: 10px;
-          font-weight: 900;
-          cursor: pointer;
-          font-size: 14px;
-        ">Confirmer</button>
-        <button id="cancelBtn" style="
-          flex: 1;
-          padding: 12px 20px;
-          background: rgba(0, 0, 0, 0.2);
-          color: white;
-          border: none;
-          border-radius: 10px;
-          font-weight: 900;
-          cursor: pointer;
-          font-size: 14px;
-        ">Annuler</button>
-      </div>
-    `;
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    // Animations CSS
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes slideIn {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Gestion des événements
-    const confirmBtn = modal.querySelector('#confirmBtn');
-    const cancelBtn = modal.querySelector('#cancelBtn');
-
-    const closeModal = () => {
-      overlay.style.opacity = '0';
-      setTimeout(() => {
-        document.body.removeChild(overlay);
-        document.head.removeChild(style);
-      }, 200);
-    };
-
-    confirmBtn.addEventListener('click', () => {
-      closeModal();
-      onConfirm();
-    });
-
-    cancelBtn.addEventListener('click', closeModal);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal();
-    });
+    Notify.confirm(title, message, onConfirm, type === 'warning' ? 'warn' : type);
   }
 
-  /**
-   * Affiche une notification centrée (après suppression)
-   */
-  showCenteredNotification(message, type = 'warning') {
-    const notification = document.createElement('div');
-    
-    const colors = {
-      success: 'var(--good)',
-      warning: 'var(--warn)',
-      info: 'var(--cool)',
-      error: 'var(--bad)'
-    };
-
-    notification.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: ${colors[type] || colors.warning};
-      color: white;
-      padding: 20px 32px;
-      border-radius: 16px;
-      font-weight: 900;
-      font-size: 16px;
-      z-index: 10002;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      animation: popIn 0.3s ease;
-    `;
-
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    // Animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes popIn {
-        0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-        100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Disparaître après 1.5 secondes
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
-      setTimeout(() => {
-        document.body.removeChild(notification);
-        document.head.removeChild(style);
-      }, 300);
-    }, 1500);
+  showCenteredNotification(message, type = 'info') {
+    Notify.center(message, type === 'warning' ? 'warn' : type);
   }
 
-  /**
-   * Retourne la couleur CSS selon l'IG
-   */
   getIGColor(ig) {
-    if (ig < 55) return 'var(--good)';    // 🟢 IG bas
-    if (ig < 70) return 'var(--warn)';    // 🟡 IG moyen
-    return 'var(--bad)';                   // 🔴 IG élevé
+    if (ig < 55) return 'var(--good)';
+    if (ig < 70) return 'var(--warn)';
+    return 'var(--bad)';
   }
 
-  /**
-   * Retourne la couleur CSS selon la CG
-   */
   getCGColor(cg) {
-    if (cg < 10) return 'var(--good)';     // 🟢 CG basse
-    if (cg < 20) return 'var(--warn)';     // 🟡 CG moyenne
-    return 'var(--bad)';                    // 🔴 CG élevée
+    if (cg < 10) return 'var(--good)';
+    if (cg < 20) return 'var(--warn)';
+    return 'var(--bad)';
   }
 }
 
-// ==========================================
-// INITIALISATION ROBUSTE
-// ==========================================
-
-function initFoodSearchUI() {
-  const carbsInput = document.getElementById('carbFast');
-  
-  if (!carbsInput) {
-    console.error('❌ Élément #carbFast introuvable - FoodSearchUI non initialisé');
-    return false;
-  }
-  
-  if (!window.FoodDatabase) {
-    console.error('❌ FoodDatabase non chargé - FoodSearchUI non initialisé');
-    return false;
-  }
-  
-  if (window.foodSearchUI) {
-    console.log('⚠️ FoodSearchUI déjà initialisé');
-    return true;
-  }
-  
-  try {
-    window.foodSearchUI = new FoodSearchUI(carbsInput);
-    console.log('✅ FoodSearchUI initialisé avec succès');
-    return true;
-  } catch (error) {
-    console.error('❌ Erreur initialisation FoodSearchUI:', error);
-    return false;
-  }
-}
-
-// Stratégie 1 : DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('📌 DOMContentLoaded déclenché');
-  
-  if (initFoodSearchUI()) {
-    return;
-  }
-  
-  setTimeout(() => {
-    console.log('🔄 Tentative d\'initialisation différée (100ms)...');
-    if (initFoodSearchUI()) {
-      return;
-    }
-    
-    setTimeout(() => {
-      console.log('🔄 Dernière tentative d\'initialisation (500ms)...');
-      initFoodSearchUI();
-    }, 400);
-  }, 100);
-});
-
-// Stratégie 2 : Fallback sur window.load
-window.addEventListener('load', () => {
-  if (!window.foodSearchUI) {
-    console.log('🔄 Initialisation fallback sur window.load');
-    initFoodSearchUI();
-  } else {
-    console.log('✅ FoodSearchUI déjà opérationnel');
-  }
-});
+// ─── PAS D'AUTO-INITIALISATION ───────────────────────────────────────────────
+// L'instanciation est déléguée à app.js pour éviter toute double initialisation.
+// Ne pas ajouter de DOMContentLoaded ou window.load ici.

@@ -36,14 +36,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="AC Bolus" />
   
-  <!-- Modules de gestion des aliments et optimisation -->
-  <script src="food-database.js"></script>
-  <script src="bolus-optimizer.js"></script>
-  <script src="food-search-ui.js"></script>
-  
-  <!-- Mode simple : Wizard de composition guidée -->
-  <script src="simple-mode-data.js"></script>
-  <script src="simple-mode-wizard.js"></script>
+  <!-- Scripts déplacés en bas du body pour garantir l'ordre d'exécution (Issue 1) -->
   
   <style>
     :root{
@@ -1856,58 +1849,221 @@
   const MIN_BASALE = 20, MAX_BASALE = 35;
   const MIN_RAPIDE = 10,  MAX_RAPIDE = 25;
 
+  // -------------------- AppStorage (inline) --------------------
+  // AppStorage doit être disponible avant l'objet Storage ci-dessous.
+  // On l'embarque ici plutôt que de le charger via <script src> externe,
+  // car le script inline s'exécute AVANT les scripts du bas du <body>.
+  // Le fichier storage.js externe reste chargé pour food-search-ui.js.
+  // Les deux définitions sont identiques — window.AppStorage est le point commun.
+  if (!window.AppStorage) {
+    window.AppStorage = (() => {
+      const ENVELOPE_VERSION = 1;
+
+      function get(key, opts = {}) {
+        const { maxAge, schemaVersion } = opts;
+        let raw;
+        try { raw = localStorage.getItem(key); } catch (e) { return null; }
+        if (raw === null) return null;
+        let envelope;
+        try { envelope = JSON.parse(raw); } catch (e) { localStorage.removeItem(key); return null; }
+        if (!envelope || typeof envelope !== 'object' || envelope.v !== ENVELOPE_VERSION) {
+          localStorage.removeItem(key); return null;
+        }
+        if (schemaVersion !== undefined && envelope.sv !== schemaVersion) {
+          localStorage.removeItem(key); return null;
+        }
+        const now = Date.now();
+        if (maxAge !== undefined) {
+          if (!Number.isFinite(envelope.savedAt) || now - envelope.savedAt > maxAge) {
+            localStorage.removeItem(key); return null;
+          }
+        } else if (envelope.expiresAt !== null && Number.isFinite(envelope.expiresAt)) {
+          if (now > envelope.expiresAt) { localStorage.removeItem(key); return null; }
+        }
+        return envelope.data;
+      }
+
+      function set(key, value, opts = {}) {
+        const { ttl, schemaVersion } = opts;
+        const now = Date.now();
+        const envelope = {
+          v: ENVELOPE_VERSION,
+          sv: schemaVersion !== undefined ? schemaVersion : null,
+          savedAt: now,
+          expiresAt: (ttl !== undefined && Number.isFinite(ttl)) ? now + ttl : null,
+          data: value
+        };
+        try { localStorage.setItem(key, JSON.stringify(envelope)); return true; }
+        catch (e) { return false; }
+      }
+
+      function clear(key) {
+        try { localStorage.removeItem(key); } catch (_) {}
+      }
+
+      const KEYS = {
+        theme:      'bc_theme',
+        simpleMode: 'bc_simple',
+        ratios:     'bc_ratios',
+        lastCarbs:  'bc_last_carbs',
+        meal:       'bc_meal_composition',
+      };
+      const SCHEMA = { ratios: 2, meal: 2 };
+      const TTL    = { ratios: 3 * 24 * 60 * 60 * 1000, meal: 8 * 60 * 60 * 1000 };
+
+      return { get, set, clear, KEYS, SCHEMA, TTL };
+    })();
+  }
+  // Alias local pour raccourcir les appels dans ce script
+  const AppStorage = window.AppStorage;
+
+  // -------------------- BolusMath (inline) --------------------
+  // Même raison que AppStorage : le script inline s'exécute avant les <script src>.
+  // Les fichiers bolusMath.js et units.js externes restent chargés pour usage futur.
+  if (!window.BolusMath) {
+    window.BolusMath = (() => {
+      const ICR_CONSTANT = 500;
+      const FSI_CONSTANT = 1800;
+      function _positif(n) { return Number.isFinite(n) && n > 0; }
+
+      function calcRatios(basale, rapide) {
+        if (!Number.isFinite(basale) || !Number.isFinite(rapide)) return { dtq: NaN, icr: NaN, fsi: NaN };
+        const dtq = basale + rapide;
+        if (!_positif(dtq)) return { dtq: NaN, icr: NaN, fsi: NaN };
+        return { dtq, icr: ICR_CONSTANT / dtq, fsi: FSI_CONSTANT / dtq };
+      }
+      function calcCorrection(glycemie, objectif, fsi) {
+        if (!Number.isFinite(glycemie) || !Number.isFinite(objectif) || !_positif(fsi)) return NaN;
+        return (glycemie - objectif) / fsi;
+      }
+      function calcRepas(glucides, icr) {
+        if (!Number.isFinite(glucides) || glucides < 0 || !_positif(icr)) return NaN;
+        return glucides / icr;
+      }
+      function calcTotal(correction, repas) {
+        if (!Number.isFinite(correction) || !Number.isFinite(repas)) return NaN;
+        return correction + repas;
+      }
+      function roundToStep(n, step) {
+        if (!Number.isFinite(n)) return NaN;
+        const s = Number(step);
+        if (!Number.isFinite(s) || s <= 0) return n;
+        return Math.round(n / s) * s;
+      }
+      function clamp(n, min, max) {
+        if (!Number.isFinite(n)) return NaN;
+        return Math.min(max, Math.max(min, n));
+      }
+      function calcBolus({ glycemie, objectif, glucides, basale, rapide, step = 0.1 }) {
+        const { dtq, icr, fsi } = calcRatios(basale, rapide);
+        const correction   = calcCorrection(glycemie, objectif, fsi);
+        const repas        = calcRepas(glucides, icr);
+        const total        = calcTotal(correction, repas);
+        const totalArrondi = roundToStep(total, step);
+        return { correction, repas, total, totalArrondi, dtq, icr, fsi };
+      }
+      return { calcRatios, calcCorrection, calcRepas, calcTotal, calcBolus, roundToStep, clamp, ICR_CONSTANT, FSI_CONSTANT };
+    })();
+  }
+  const BolusMath = window.BolusMath;
+
+  if (!window.GlyUnits) {
+    window.GlyUnits = (() => {
+      const GL_TO_MGDL = 100, MGDL_TO_GL = 1/100, MMOL_TO_MGDL = 18.016, MGDL_TO_MMOL = 1/18.016;
+      const RANGE = { min: 20, max: 600 };
+      function _parse(str) {
+        if (str === null || str === undefined) return NaN;
+        const s = String(str).trim().replace(',', '.');
+        if (s === '') return NaN;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : NaN;
+      }
+      function mgdlToGl(v)  { const n = _parse(v); return Number.isFinite(n) ? n * MGDL_TO_GL : NaN; }
+      function glToMgdl(v)  { const n = _parse(v); return Number.isFinite(n) ? n * GL_TO_MGDL : NaN; }
+      function mgdlToMmol(v){ const n = _parse(v); return Number.isFinite(n) ? n * MGDL_TO_MMOL : NaN; }
+      function mmolToMgdl(v){ const n = _parse(v); return Number.isFinite(n) ? n * MMOL_TO_MGDL : NaN; }
+      function parseGly(str, opts = {}) {
+        const n = _parse(str);
+        if (!Number.isFinite(n)) return NaN;
+        if (!opts.allowOutOfRange && (n < RANGE.min || n > RANGE.max)) return NaN;
+        return n;
+      }
+      function parseGlyGl(str) {
+        const gl = _parse(str);
+        if (!Number.isFinite(gl)) return NaN;
+        const mgdl = glToMgdl(gl);
+        if (!Number.isFinite(mgdl) || mgdl < RANGE.min || mgdl > RANGE.max) return NaN;
+        return mgdl;
+      }
+      function formatMgdl(v) { return Number.isFinite(v) ? String(Math.round(v)) : '—'; }
+      function formatGl(v)   { return Number.isFinite(v) ? v.toFixed(1) : '—'; }
+      function detectUnit(str) {
+        const n = _parse(str);
+        if (!Number.isFinite(n)) return 'unknown';
+        if (n >= RANGE.min && n <= RANGE.max) return 'mgdl';
+        if (n > 0 && n < RANGE.min) { const m = glToMgdl(n); if (m >= RANGE.min && m <= RANGE.max) return 'gl'; }
+        return 'unknown';
+      }
+      return { mgdlToGl, glToMgdl, mgdlToMmol, mmolToMgdl, parseGly, parseGlyGl, formatMgdl, formatGl, detectUnit, GL_TO_MGDL, MGDL_TO_GL, MMOL_TO_MGDL, MGDL_TO_MMOL, RANGE };
+    })();
+  }
+  const GlyUnits = window.GlyUnits; // eslint-disable-line no-unused-vars (utilisé pour usage futur)
+
   // -------------------- Storage --------------------
+  // Wrapper mince qui mappe les méthodes de l'app vers AppStorage.
   const Storage = {
-    keyTheme: "bc_theme_v1",
-    keySimple: "bc_simple_v1",
-    keyRatios: "bc_ratios_v1",
-    keyCarbs: "bc_last_carbs_v1",
 
-    getTheme(){ return localStorage.getItem(this.keyTheme) || "clair"; },
-    setTheme(v){ localStorage.setItem(this.keyTheme, v); },
-
-    getSimple(){ 
-      const stored = localStorage.getItem(this.keySimple);
-      // Si jamais configuré, retourner true (mode simple par défaut)
-      if(stored === null) return true;
-      return stored === "1";
+    getTheme(){
+      return AppStorage.get(AppStorage.KEYS.theme) || 'clair';
     },
-    setSimple(v){ localStorage.setItem(this.keySimple, v ? "1" : "0"); },
+    setTheme(v){
+      AppStorage.set(AppStorage.KEYS.theme, v); // pas de TTL : persistant
+    },
+
+    getSimple(){
+      const val = AppStorage.get(AppStorage.KEYS.simpleMode);
+      if (val === null) return true; // mode simple par défaut si jamais configuré
+      return val === true || val === '1' || val === 1;
+    },
+    setSimple(v){
+      AppStorage.set(AppStorage.KEYS.simpleMode, v ? '1' : '0'); // pas de TTL : persistant
+    },
 
     getLastCarbs(){
-      const raw = localStorage.getItem(this.keyCarbs);
-      if(raw === null) return null;
-      const n = Util.toNumber(raw);
-      return Number.isFinite(n) ? n : null;
+      const n = AppStorage.get(AppStorage.KEYS.lastCarbs);
+      if (n === null) return null;
+      const parsed = typeof n === 'number' ? n : Util.toNumber(String(n));
+      return Number.isFinite(parsed) ? parsed : null;
     },
     setLastCarbs(v){
-      if(Number.isFinite(v)) localStorage.setItem(this.keyCarbs, String(v));
+      if (Number.isFinite(v)) AppStorage.set(AppStorage.KEYS.lastCarbs, v); // persistant
     },
 
-    // Ratios persisted for 3 days
+    // Ratios persistés 3 jours — avec schemaVersion
     getRatios(){
-      const raw = localStorage.getItem(this.keyRatios);
-      if(!raw) return null;
-      try{
-        const o = JSON.parse(raw);
-        if(!o || typeof o !== "object") return null;
-        const now = Date.now();
-        if(!Number.isFinite(o.expiresAt) || now > o.expiresAt) return null;
-        return {
-          basale: Util.toNumber(o.basale),
-          rapide: Util.toNumber(o.rapide),
-          objectif: Util.toNumber(o.objectif),
-          step: Util.toNumber(o.step)
-        };
-      }catch(_e){ return null; }
+      const o = AppStorage.get(AppStorage.KEYS.ratios, {
+        schemaVersion: AppStorage.SCHEMA.ratios
+      });
+      if (!o || typeof o !== 'object') return null;
+      const r = {
+        basale:  Util.toNumber(o.basale),
+        rapide:  Util.toNumber(o.rapide),
+        objectif: Util.toNumber(o.objectif),
+        step:    Util.toNumber(o.step)
+      };
+      // Vérification minimaliste : basale et rapide doivent être des nombres finis
+      if (!Number.isFinite(r.basale) || !Number.isFinite(r.rapide)) return null;
+      return r;
     },
-    setRatios({basale, rapide, objectif, step}){
-      const now = Date.now();
-      const expiresAt = now + 3 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(this.keyRatios, JSON.stringify({ basale, rapide, objectif, step, expiresAt }));
+    setRatios({ basale, rapide, objectif, step }){
+      AppStorage.set(
+        AppStorage.KEYS.ratios,
+        { basale, rapide, objectif, step },
+        { ttl: AppStorage.TTL.ratios, schemaVersion: AppStorage.SCHEMA.ratios }
+      );
     },
     clearRatios(){
-      localStorage.removeItem(this.keyRatios);
+      AppStorage.clear(AppStorage.KEYS.ratios);
     }
   };
 
@@ -1962,7 +2118,7 @@
   // -------------------- UI State --------------------
   const Touched = { gly:false, carbs:false, objectif:false, basale:false, rapide:false };
   let simpleMode = false;
-  let simpleModeWizard = null; // Instance du wizard (créée à l'init)
+  // Note : window.simpleModeWizard est géré par app.js (bootstrap unique)
 
   // -------------------- Theme --------------------
   function applyTheme(theme){
@@ -2002,9 +2158,11 @@
       // MODE SIMPLE : Afficher le wizard, cacher le contenu mode initié
       if(wizardContainer) {
         wizardContainer.classList.remove('hidden');
-        // Initialiser le wizard
-        if(typeof simpleModeWizard !== 'undefined'){
-          simpleModeWizard.init();
+        // Initialiser le wizard (instance gérée par app.js)
+        if(window.simpleModeWizard){
+          // Ne pas rappeler init() (déjà fait par app.js au boot).
+          // On veut simplement afficher l'écran d'accueil du wizard.
+          window.simpleModeWizard.afficherChoixRepas();
         }
       }
       if(initiatedContent) initiatedContent.classList.add('hidden');
@@ -2109,11 +2267,8 @@
   }
 
   function computeRatios(basale, rapide){
-    const dtq = basale + rapide;
-    if(!Number.isFinite(dtq) || dtq <= 0) return { dtq: NaN, icr: NaN, fsi: NaN };
-    const icr = 500 / dtq;
-    const fsi = 1800 / dtq;
-    return { dtq, icr, fsi };
+    // Délègue à BolusMath — source unique de vérité pour ICR/FSI/DTQ
+    return BolusMath.calcRatios(basale, rapide);
   }
 
   function readCommonParams(){
@@ -2223,11 +2378,15 @@
     // keep last carbs
     if(Number.isFinite(v.carbs)) Storage.setLastCarbs(v.carbs);
 
-    const rawCorrection = (v.gly - p.objectif) / p.fsi;
-    const correction = rawCorrection;  // Permet les valeurs négatives en mode simple et initié
-    const repas = v.carbs / p.icr;
-    const total = correction + repas;
-    const totalArrondi = Util.roundToStep(total, p.step);
+    // Délègue à BolusMath — source unique de vérité pour les formules
+    const { correction, repas, total, totalArrondi } = BolusMath.calcBolus({
+      glycemie:  v.gly,
+      objectif:  p.objectif,
+      glucides:  v.carbs,
+      basale:    p.basale,
+      rapide:    p.rapide,
+      step:      p.step
+    });
 
     return { ...p, ...v, correction, repas, total, totalArrondi };
   }
@@ -2348,10 +2507,7 @@
     initTheme();
     simpleMode = Storage.getSimple();
     
-    // Créer l'instance du wizard (une seule fois)
-    if (typeof SimpleModeWizard !== 'undefined') {
-      simpleModeWizard = new SimpleModeWizard();
-    }
+    // Note : window.simpleModeWizard est créé par app.js après ce script
     
     applySimpleMode();
 
@@ -2779,5 +2935,29 @@
   }
 })();
 </script>
+
+<!--
+  ORDRE D'EXÉCUTION GARANTI (Issue 1 + Issue 2 + Issue 4 + Issue 7) :
+  1. storage.js        — AppStorage unifié (TTL + versioning), doit être 1er
+  2. bolusMath.js      — BolusMath : pure functions moteur bolus
+  3. units.js          — GlyUnits : conversions mg/dL ↔ g/L + parsing
+  4. notifications.js  — Notify : toasts/bannières/confirm centralisés
+  5. food-database     — FoodDatabase (utilise Notify pour les erreurs)
+  6. bolus-optimizer   — BolusOptimizer (pas de dépendances)
+  7. food-search-ui    — FoodSearchUI (dépend de AppStorage + Notify)
+  8. simple-mode-*     — SimpleModeData + SimpleModeWizard
+  9. app.js en dernier — instancie FoodSearchUI et SimpleModeWizard une seule fois
+-->
+<script src="storage.js"></script>
+<script src="bolusMath.js"></script>
+<script src="units.js"></script>
+<script src="notifications.js"></script>
+<script src="food-database.js"></script>
+<script src="bolus-optimizer.js"></script>
+<script src="food-search-ui.js"></script>
+<script src="simple-mode-data.js"></script>
+<script src="simple-mode-wizard.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>
