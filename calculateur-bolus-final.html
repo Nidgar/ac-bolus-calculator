@@ -409,6 +409,14 @@
     .res .k{ font-size: 11px; color: var(--muted); margin-bottom: 6px; }
     .res .v{ font-size: 22px; font-weight: 950; font-variant-numeric: tabular-nums; }
     .res.total .v{ font-size: 30px; letter-spacing: 0.2px; }
+    .total-detail{
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.75;
+      min-height: 14px;
+    }
 
     .miniBadges{
       display:flex;
@@ -1589,7 +1597,7 @@
         <div class="pills" aria-label="Résumé">
           <div class="pill">
             <span id="pillDot" class="dotGly" aria-hidden="true"></span>
-            🩸 <span class="pill-label">Glycémie</span> : <strong id="pillGly">—</strong> mg/dL
+            🩸 <span class="pill-label">Glycémie</span> : <strong id="pillGly">—</strong> <span id="pillGlyUnit">mg/dL</span>
           </div>
           <div class="pill">🍬 <span class="pill-label">Glucides</span> : <strong id="pillCarbs">—</strong> g</div>
           <div class="pill">🎯 <span class="pill-label">Objectif</span> : <strong id="pillTarget">—</strong> mg/dL</div>
@@ -1626,14 +1634,18 @@
         <details open>
           <summary>🧮 Insulines quotidiennes (obligatoire)</summary>
           <p style="margin:8px 0 0; color:var(--muted); font-size:12px">
-            DTQ = Basale + Rapide · ICR = 500 / DTQ · FSI = 1800 / DTQ
+            <strong>DTQ</strong> = Basale + Rapide
+            &nbsp;·&nbsp;
+            <strong>ICR</strong> = 500 ÷ DTQ <em>(g de glucides couverts par 1 U)</em>
+            &nbsp;·&nbsp;
+            <strong>FSI</strong> = 1800 ÷ DTQ <em>(mg/dL abaissé par 1 U)</em>
           </p>
 
           <div class="row2" style="margin-top:12px">
             <label>
               <div class="label">Insuline basale (U / jour) — 20 à 35</div>
               <div class="fieldLine">
-                <input id="basale" type="number" inputmode="decimal" min="0" max="35" step="0.5" value="0">
+                <input id="basale" type="number" inputmode="decimal" min="20" max="35" step="0.5" value="" placeholder="20–35">
                 <div id="basaleErr" class="fieldError" role="status" aria-live="polite">⚠️ 20–35</div>
               </div>
             </label>
@@ -1641,16 +1653,16 @@
             <label>
               <div class="label">Insuline rapide totale (U / jour) — 10 à 25</div>
               <div class="fieldLine">
-                <input id="rapide" type="number" inputmode="decimal" min="10" max="25" step="0.5" value="0">
+                <input id="rapide" type="number" inputmode="decimal" min="10" max="25" step="0.5" value="" placeholder="10–25">
                 <div id="rapideErr" class="fieldError" role="status" aria-live="polite">⚠️ 10–25</div>
               </div>
             </label>
           </div>
 
           <div class="metrics" aria-label="Valeurs calculées">
-            <div class="metric"><div class="k">DTQ</div><div id="dtq" class="v">—</div></div>
-            <div class="metric"><div class="k">ICR (g/U)</div><div id="icr" class="v">—</div></div>
-            <div class="metric"><div class="k">FSI (mg/dL par U)</div><div id="fsi" class="v">—</div></div>
+            <div class="metric"><div class="k">DTQ (U/j)</div><div id="dtq" class="v">—</div></div>
+            <div class="metric"><div class="k">ICR — 500÷DTQ (g/U)</div><div id="icr" class="v">—</div></div>
+            <div class="metric"><div class="k">FSI — 1800÷DTQ (mg/dL/U)</div><div id="fsi" class="v">—</div></div>
           </div>
         </details>
 
@@ -1670,11 +1682,11 @@
         <div class="stepper">
           <div class="label label-large">
             <span id="labelDotFast" class="dotGly" aria-hidden="true"></span>
-            <span class="label-icon">🩸</span> Glycémie actuelle (mg/dL)
+            <span class="label-icon">🩸</span> Glycémie actuelle (<span id="glyUnitLabel">mg/dL</span>)
           </div>
           <div class="fieldLine">
             <input id="glyFast" type="number" inputmode="numeric" min="50" max="500" step="1" value="" placeholder="Entre 50 et 500">
-            <div id="glyFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glycémie hors plage (50 à 500).</div>
+            <div id="glyFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glycémie hors plage (50–500 mg/dL ou 0.5–6 g/L).</div>
           </div>
         </div>
 
@@ -1709,6 +1721,7 @@
           </div>
           <div class="res total">
             <div class="k">Bolus conseillé</div><div id="totalFast" class="v">—</div>
+            <div id="totalDetail" class="total-detail" aria-label="Détail du calcul d'arrondi"></div>
           </div>
         </div>
       </div>
@@ -1834,8 +1847,8 @@
     roundToStep(n, step){
       if(!Number.isFinite(n)) return NaN;
       const s = Number(step);
-      if(!Number.isFinite(s) || s <= 0) return n;
-      return Math.round(n / s) * s;
+      const safeStep = (Number.isFinite(s) && s > 0) ? s : 0.1;
+      return Math.round(n / safeStep) * safeStep;
     }
   };
 
@@ -1944,11 +1957,12 @@
         if (!Number.isFinite(correction) || !Number.isFinite(repas)) return NaN;
         return correction + repas;
       }
+      const STEP_DEFAULT = 0.1;
       function roundToStep(n, step) {
         if (!Number.isFinite(n)) return NaN;
         const s = Number(step);
-        if (!Number.isFinite(s) || s <= 0) return n;
-        return Math.round(n / s) * s;
+        const safeStep = (Number.isFinite(s) && s > 0) ? s : STEP_DEFAULT;
+        return Math.round(n / safeStep) * safeStep;
       }
       function clamp(n, min, max) {
         if (!Number.isFinite(n)) return NaN;
@@ -2096,6 +2110,14 @@
     glyFastErr: $("glyFastErr"),
     carbFastErr: $("carbFastErr"),
 
+    // unit labels (dynamic)
+    glyUnitLabel: $("glyUnitLabel"),
+    pillGlyUnit: $("pillGlyUnit"),
+
+    // unit labels (dynamic)
+    glyUnitLabel: $("glyUnitLabel"),
+    pillGlyUnit: $("pillGlyUnit"),
+
     // pills
     pillGly: $("pillGly"),
     pillCarbs: $("pillCarbs"),
@@ -2110,6 +2132,7 @@
     corrFast: $("corrFast"),
     repasFast: $("repasFast"),
     totalFast: $("totalFast"),
+    totalDetail: $("totalDetail"),
 
     statusFast: $("statusFast"),
     status: $("status")
@@ -2187,25 +2210,13 @@
 
   // -------------------- Toggle détails bolus (mode simple) --------------------
   function toggleBolusDetails() {
-    console.log('🔍 toggleBolusDetails appelé');
-    console.log('Body classes avant:', document.body.className);
-    
     const isShowing = document.body.classList.toggle('show-bolus-details');
-    
-    console.log('Body classes après:', document.body.className);
-    console.log('isShowing:', isShowing);
-    
     const btn = document.getElementById('toggleDetailsBtn');
     const icon = document.getElementById('toggleDetailsIcon');
-    
-    console.log('Bouton trouvé:', !!btn);
-    console.log('Icône trouvée:', !!icon);
-    
     if (btn && icon) {
       icon.textContent = isShowing ? '−' : '+';
       btn.setAttribute('aria-expanded', String(isShowing));
       btn.setAttribute('aria-label', isShowing ? 'Masquer les détails' : 'Afficher les détails');
-      console.log('✅ Bouton mis à jour:', icon.textContent);
     }
     
     // Recalculer et afficher les valeurs
@@ -2274,7 +2285,10 @@
   function readCommonParams(){
     const basale = Util.toNumber(el.basale?.value);
     const rapide = Util.toNumber(el.rapide?.value);
-    const step = Util.toNumber(el.arrondi?.value);
+    const rawStep = Util.toNumber(el.arrondi?.value);
+    const VALID_STEPS = [0.1, 0.5, 1];
+    const step = VALID_STEPS.includes(rawStep) ? rawStep : 0.1;
+    if (!VALID_STEPS.includes(rawStep) && el.arrondi) el.arrondi.value = '0.1';
     const tv = validateTarget();
     const ratiosOk = updateRatioAlert(basale, rapide);
 
@@ -2287,8 +2301,22 @@
 
   // -------------------- Inputs validation (fast mode only) --------------------
   function validateMealInputs(){
-    const g = Util.toNumber(el.glyFast?.value);
+    const rawGly = el.glyFast?.value ?? '';
     const c = Util.toNumber(el.carbFast?.value);
+
+    // --- Détection automatique de l'unité glycémie ---
+    const detectedUnit = GlyUnits.detectUnit(rawGly); // 'mgdl' | 'gl' | 'unknown'
+    let g;
+    if (detectedUnit === 'gl') {
+      g = GlyUnits.glToMgdl(rawGly);   // converti en mg/dL pour tous les calculs
+    } else {
+      g = Util.toNumber(rawGly);        // mg/dL direct
+    }
+
+    // Mise à jour visuelle de l'unité détectée
+    const unitLabel = detectedUnit === 'gl' ? 'g/L' : 'mg/dL';
+    if (el.glyUnitLabel)  el.glyUnitLabel.textContent  = unitLabel;
+    if (el.pillGlyUnit)   el.pillGlyUnit.textContent   = unitLabel;
 
     const glyInvalid = !rangeOk(g, GLY_MIN, GLY_MAX);
     const carbInvalid = !rangeOk(c, CARB_MIN, CARB_MAX);
@@ -2299,7 +2327,7 @@
     const confirmed = Touched.gly && Touched.carbs;
     
     // Effet néon si le champ est vide ou invalide (et pas encore touché pour éviter l'erreur rouge)
-    const glyEmpty = !el.glyFast?.value || glyInvalid;
+    const glyEmpty = !rawGly || glyInvalid;
     const carbEmpty = !el.carbFast?.value || carbInvalid;
     
     if(el.glyFast){
@@ -2318,7 +2346,7 @@
       }
     }
 
-    return { gly:g, carbs:c, ok: !(glyInvalid || carbInvalid), confirmed };
+    return { gly: g, glyRaw: rawGly, glyUnit: detectedUnit, carbs: c, ok: !(glyInvalid || carbInvalid), confirmed };
   }
 
   // -------------------- Status --------------------
@@ -2388,7 +2416,11 @@
       step:      p.step
     });
 
-    return { ...p, ...v, correction, repas, total, totalArrondi };
+    // Règle produit : pas de bolus négatif conseillé.
+    const isHypo = Number.isFinite(totalArrondi) && totalArrondi < 0;
+    const totalConseille = isHypo ? 0 : totalArrondi;
+
+    return { ...p, ...v, correction, repas, total, totalArrondi, totalConseille, isHypo };
   }
 
   // -------------------- Rendering --------------------
@@ -2397,8 +2429,15 @@
     const t = params?.objectif;
     if(el.pillTarget) el.pillTarget.textContent = (Number.isFinite(t) && rangeOk(t, TARGET_MIN, TARGET_MAX)) ? String(t) : "—";
 
-    const g = Util.toNumber(el.glyFast?.value);
-    if(el.pillGly) el.pillGly.textContent = Number.isFinite(g) ? String(g) : "—";
+    const rawGly = el.glyFast?.value ?? '';
+    const detectedUnit = GlyUnits.detectUnit(rawGly);
+    const gMgdl = detectedUnit === 'gl' ? GlyUnits.glToMgdl(rawGly) : Util.toNumber(rawGly);
+    // Affichage dans l'unité saisie par l'utilisateur
+    const gDisplay = detectedUnit === 'gl'
+      ? (Number.isFinite(gMgdl) ? GlyUnits.formatGl(GlyUnits.mgdlToGl(gMgdl)) : '—')
+      : (Number.isFinite(gMgdl) ? String(Math.round(gMgdl)) : '—');
+    if(el.pillGly) el.pillGly.textContent = gDisplay;
+    const g = gMgdl; // mg/dL pour les seuils de couleur ci-dessous
     
     // Coloration du point glycémie selon la valeur (pour les pills et le champ input)
     const pillDot = $("pillDot");
@@ -2446,42 +2485,38 @@
     const fmt = (n) => Number.isFinite(n) ? n.toFixed(2) : "—";
     const fmt1 = (n) => Number.isFinite(n) ? n.toFixed(1) : "—";
 
-    // En mode simple SANS détails, on n'affiche que le total (arrondi)
     const showDetails = document.body.classList.contains('show-bolus-details');
-    
-    console.log('📊 renderResults appelé');
-    console.log('  simpleMode:', simpleMode);
-    console.log('  showDetails:', showDetails);
-    console.log('  r:', r);
-    
+
     if(simpleMode && !showDetails){
-      console.log('  → Mode simple fermé : masquer détails');
-      if(el.totalFast) el.totalFast.textContent = r ? fmt1(r.totalArrondi) : "—";
-      if(el.corrFast) el.corrFast.textContent = "—";
-      if(el.repasFast) el.repasFast.textContent = "—";
+      if(el.totalFast)   el.totalFast.textContent   = r ? fmt1(r.totalConseille) : "—";
+      if(el.corrFast)    el.corrFast.textContent    = "—";
+      if(el.repasFast)   el.repasFast.textContent   = "—";
+      if(el.totalDetail) el.totalDetail.textContent = "";
       return;
     }
 
-    console.log('  → Afficher tous les détails');
-    
-    // Mode initié OU mode simple avec détails : afficher tout
     if(!r){
-      console.log('  → Pas de résultat, afficher —');
-      if(el.corrFast) el.corrFast.textContent = "—";
-      if(el.repasFast) el.repasFast.textContent = "—";
-      if(el.totalFast) el.totalFast.textContent = "—";
+      if(el.corrFast)    el.corrFast.textContent    = "—";
+      if(el.repasFast)   el.repasFast.textContent   = "—";
+      if(el.totalFast)   el.totalFast.textContent   = "—";
+      if(el.totalDetail) el.totalDetail.textContent = "";
       return;
     }
 
-    console.log('  → Afficher valeurs:', {
-      correction: r.correction,
-      repas: r.repas,
-      total: r.totalArrondi
-    });
-    
-    if(el.corrFast) el.corrFast.textContent = fmt(r.correction);
+    if(el.corrFast)  el.corrFast.textContent  = fmt(r.correction);
     if(el.repasFast) el.repasFast.textContent = fmt(r.repas);
-    if(el.totalFast) el.totalFast.textContent = fmt1(r.totalArrondi);
+    if(el.totalFast) el.totalFast.textContent = fmt1(r.totalConseille);
+
+    // Ligne d'arrondi : montre le total exact → arrondi au pas
+    // Exemples : "= 6.36 → arrondi 6.5 U (pas 0.5)"  /  "= 6.00 → exact"
+    if(el.totalDetail && Number.isFinite(r.total)){
+      const exactStr  = r.total.toFixed(2);
+      const stepStr   = String(r.step);
+      const isExact   = Math.abs(r.total - r.totalConseille) < 0.001;
+      el.totalDetail.textContent = isExact
+        ? `= ${exactStr} U (exact)`
+        : `= ${exactStr} → arrondi au pas ${stepStr} U`;
+    }
   }
 
   function render(){
@@ -2492,10 +2527,13 @@
     renderResults(result);
 
     if(result){
-      setStatus("ok", "Calcul du Bolus réalisé");
-      // Non-bloquant : avertissement si rapide > basale (inhabituel médicalement)
-      if(p.rapide > p.basale){
-        setStatus("warn", "⚠️ Insuline rapide > basale : vérifie que c'est cohérent.");
+      if(result.isHypo){
+        setStatus("bad", "⛔ Glycémie basse — 0 U conseillé. Resucrage recommandé, ne pas injecter.");
+      } else {
+        setStatus("ok", "Calcul du Bolus réalisé");
+        if(p.rapide > p.basale){
+          setStatus("warn", "⚠️ Insuline rapide > basale : vérifie que c'est cohérent.");
+        }
       }
     }
     // Pas de else ici - on laisse calcBolus() gérer les messages d'erreur/info
@@ -2514,8 +2552,8 @@
     // Restore ratios (3 days) if available
     const saved = Storage.getRatios();
     if(saved && el.basale && el.rapide && el.objectif && el.arrondi){
-      el.basale.value = Number.isFinite(saved.basale) ? String(saved.basale) : "0";
-      el.rapide.value = Number.isFinite(saved.rapide) ? String(saved.rapide) : "0";
+      el.basale.value = Number.isFinite(saved.basale) ? String(saved.basale) : "";
+      el.rapide.value = Number.isFinite(saved.rapide) ? String(saved.rapide) : "";
       el.objectif.value = Number.isFinite(saved.objectif) ? String(saved.objectif) : el.objectif.value;
       el.arrondi.value = Number.isFinite(saved.step) ? String(saved.step) : el.arrondi.value;
       
@@ -2697,241 +2735,80 @@
 // -------------------- Coloration dynamique du bloc IG (Récapitulatif mode simple) --------------------
 (() => {
   "use strict";
-  
-  console.log('🎨 Script de coloration du bloc IG (Récapitulatif) chargé');
-  
-  // Fonction pour déterminer la classe CSS selon la valeur de l'IG
-  function getIGClass(igValue) {
-    if (igValue < 55) return 'ig-low';      // Vert
-    if (igValue <= 69) return 'ig-medium';  // Jaune
-    return 'ig-high';                        // Rouge
-  }
-  
-  // Fonction pour colorier le bloc IG dans le récapitulatif
+
+  function getIGClass(v) { return v < 55 ? 'ig-low' : v <= 69 ? 'ig-medium' : 'ig-high'; }
+
   function colorerBlocIGRecap() {
-    // Chercher le bloc IG dans le récapitulatif
     const blocIG = document.querySelector('.recapTotalItem.ig');
-    
-    if (!blocIG) {
-      console.log('⚠️ Bloc IG du récapitulatif non trouvé');
-      return false;
-    }
-    
-    console.log('✅ Bloc IG du récapitulatif trouvé');
-    
-    // Récupérer la valeur de l'IG
+    if (!blocIG) return false;
     const valueElement = blocIG.querySelector('.recapTotalValue');
-    if (!valueElement) {
-      console.log('⚠️ recapTotalValue non trouvé');
-      return false;
-    }
-    
-    const valueText = valueElement.textContent.trim();
-    console.log(`📝 Texte brut de la valeur: "${valueText}"`);
-    
-    // Parser la valeur (enlever tout sauf les chiffres)
-    const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
-    
-    console.log(`📊 Valeur IG parsée: ${igValue} (type: ${typeof igValue})`);
-    
-    if (!isNaN(igValue)) {
-      // Déterminer la classe et l'emoji
-      let igClass = '';
-      let emoji = '';
-      if (igValue < 55) {
-        igClass = 'ig-low';
-        emoji = '🟢';
-        console.log(`✅ ${igValue} < 55 → IG BAS (VERT)`);
-      } else if (igValue <= 69) {
-        igClass = 'ig-medium';
-        emoji = '🟡';
-        console.log(`✅ ${igValue} est entre 55 et 69 → IG MOYEN (JAUNE)`);
-      } else {
-        igClass = 'ig-high';
-        emoji = '🔴';
-        console.log(`✅ ${igValue} >= 70 → IG ÉLEVÉ (ROUGE)`);
-      }
-      
-      // Retirer TOUTES les anciennes classes et styles
-      blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
-      blocIG.style.background = '';
-      blocIG.style.borderColor = '';
-      
-      // Ajouter la nouvelle classe
-      blocIG.classList.add(igClass);
-      console.log(`🏷️ Classe CSS "${igClass}" ajoutée`);
-      
-      // MODIFIER LA SPHÈRE APRÈS LE CHIFFRE (dans recapTotalValue)
-      // Ne PAS toucher l'icône avant le mot "IG" dans recapTotalLabel !
-      const currentText = valueElement.textContent;
-      const numberOnly = currentText.replace(/[^\d]/g, '');
-      const newText = numberOnly + ' ' + emoji;
-      valueElement.textContent = newText;
-      console.log(`🎨 Sphère changée en ${emoji} après le chiffre ${numberOnly}`);
-      
-      // Forcer aussi avec style inline pour être sûr (avec !important simulé)
-      if (igClass === 'ig-low') {
-        blocIG.style.setProperty('background', 'rgba(52, 211, 153, 0.15)', 'important');
-        blocIG.style.setProperty('border-color', 'rgba(52, 211, 153, 0.4)', 'important');
-        console.log('🎨 Style VERT appliqué');
-      } else if (igClass === 'ig-medium') {
-        blocIG.style.setProperty('background', 'rgba(251, 191, 36, 0.15)', 'important');
-        blocIG.style.setProperty('border-color', 'rgba(251, 191, 36, 0.4)', 'important');
-        console.log('🎨 Style JAUNE appliqué');
-      } else {
-        blocIG.style.setProperty('background', 'rgba(251, 113, 133, 0.15)', 'important');
-        blocIG.style.setProperty('border-color', 'rgba(251, 113, 133, 0.4)', 'important');
-        console.log('🎨 Style ROUGE appliqué');
-      }
-      
-      console.log(`✅ Classes finales: ${blocIG.className}`);
-      console.log(`✅ Style background final: ${blocIG.style.background}`);
-      
-      return true;
-    } else {
-      console.log(`⚠️ Impossible de parser la valeur: "${valueText}"`);
-      return false;
-    }
+    if (!valueElement) return false;
+    const igValue = parseInt(valueElement.textContent.replace(/[^\d]/g, ''));
+    if (isNaN(igValue)) return false;
+
+    const igClass = getIGClass(igValue);
+    const emoji   = igClass === 'ig-low' ? '🟢' : igClass === 'ig-medium' ? '🟡' : '🔴';
+
+    blocIG.classList.remove('ig-low', 'ig-medium', 'ig-high');
+    blocIG.style.background  = '';
+    blocIG.style.borderColor = '';
+    blocIG.classList.add(igClass);
+    valueElement.textContent = valueElement.textContent.replace(/[^\d]/g, '') + ' ' + emoji;
+
+    const colors = {
+      'ig-low':    ['rgba(52,211,153,0.15)',  'rgba(52,211,153,0.4)'],
+      'ig-medium': ['rgba(251,191,36,0.15)',  'rgba(251,191,36,0.4)'],
+      'ig-high':   ['rgba(251,113,133,0.15)', 'rgba(251,113,133,0.4)'],
+    };
+    blocIG.style.setProperty('background',   colors[igClass][0], 'important');
+    blocIG.style.setProperty('border-color', colors[igClass][1], 'important');
+    return true;
   }
-  
-  // Fonction pour essayer de colorer avec plusieurs tentatives
-  function essayerColoration(tentative = 0, maxTentatives = 10) {
-    const success = colorerBlocIGRecap();
-    
-    if (!success && tentative < maxTentatives) {
-      console.log(`⏳ Tentative ${tentative + 1}/${maxTentatives}...`);
-      setTimeout(() => essayerColoration(tentative + 1, maxTentatives), 200);
-    }
-  }
-  
-  // Observer les changements dans le DOM pour détecter l'affichage du récapitulatif
+
   const observer = new MutationObserver((mutations) => {
-    // Vérifier si un récapitulatif a été ajouté
-    const recapAdded = mutations.some(mutation => {
-      return Array.from(mutation.addedNodes).some(node => {
-        return node.nodeType === 1 && (
-          node.classList?.contains('recapRepas') ||
-          node.classList?.contains('recapTotalItem') ||
-          node.querySelector?.('.recapRepas') ||
-          node.querySelector?.('.recapTotalItem')
-        );
-      });
-    });
-    
-    if (recapAdded) {
-      console.log('🔄 Récapitulatif détecté, coloration du bloc IG...');
-      // Plusieurs tentatives espacées
-      setTimeout(() => essayerColoration(), 100);
-    }
+    const recapAdded = mutations.some(m =>
+      Array.from(m.addedNodes).some(n =>
+        n.nodeType === 1 && (
+          n.classList?.contains('recapRepas') ||
+          n.classList?.contains('recapTotalItem') ||
+          n.querySelector?.('.recapRepas') ||
+          n.querySelector?.('.recapTotalItem')
+        )
+      )
+    );
+    if (recapAdded) setTimeout(colorerBlocIGRecap, 100);
   });
-  
-  // Observer tout le body
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-  
-  console.log('👀 Observer installé pour détecter le récapitulatif');
-  
-  // Vérifier aussi régulièrement au cas où
-  setInterval(() => {
-    const blocIG = document.querySelector('.recapTotalItem.ig');
-    if (blocIG && !blocIG.classList.contains('ig-low') && !blocIG.classList.contains('ig-medium') && !blocIG.classList.contains('ig-high')) {
-      console.log('🔄 Bloc IG détecté sans classe, coloration...');
-      colorerBlocIGRecap();
-    }
-  }, 500);
+  observer.observe(document.body, { childList: true, subtree: true });
 })();
 
 // -------------------- Coloration dynamique du bloc IG (Mon assiette) --------------------
 (() => {
   "use strict";
-  
-  console.log('🎨 Script de coloration du bloc IG (Mon assiette) chargé');
-  
-  // Fonction pour déterminer la classe CSS selon la valeur de l'IG
-  function getIGClass(igValue) {
-    if (igValue < 55) return 'ig-low';      // Vert
-    if (igValue <= 69) return 'ig-medium';  // Jaune
-    return 'ig-high';                        // Rouge
-  }
-  
-  // Fonction pour colorier le bloc IG
+
+  function getIGClass(v) { return v < 55 ? 'ig-low' : v <= 69 ? 'ig-medium' : 'ig-high'; }
+
   function colorerBlocIG() {
     const plateSummary = document.getElementById('plateSummary');
-    if (!plateSummary) {
-      console.log('⚠️ plateSummary non trouvé');
-      return;
-    }
-    
-    console.log('🔍 Recherche du bloc IG dans plateSummary');
-    console.log('📄 Contenu HTML:', plateSummary.innerHTML);
-    
-    // Trouver tous les summaryItem
-    const items = plateSummary.querySelectorAll('.summaryItem');
-    console.log(`📦 ${items.length} summaryItem(s) trouvé(s)`);
-    
-    items.forEach((item, index) => {
+    if (!plateSummary) return;
+    plateSummary.querySelectorAll('.summaryItem').forEach((item) => {
       const label = item.querySelector('.summaryLabel');
-      const valueElement = item.querySelector('.summaryValue');
-      
-      if (label && valueElement) {
-        const labelText = label.textContent.trim();
-        const valueText = valueElement.textContent.trim();
-        console.log(`  Item ${index}: "${labelText}" = "${valueText}"`);
-        
-        // Vérifier si c'est le bloc IG (plusieurs variantes possibles)
-        if (labelText.includes('IG') || 
-            labelText.includes('Index') || 
-            labelText.includes('glycémique') ||
-            labelText.toLowerCase().includes('ig')) {
-          
-          console.log(`  ✅ Bloc IG trouvé: "${labelText}"`);
-          
-          // Récupérer la valeur de l'IG
-          const igValue = parseInt(valueText.replace(/[^\d]/g, ''));
-          
-          if (!isNaN(igValue)) {
-            // Retirer les anciennes classes
-            item.classList.remove('ig-low', 'ig-medium', 'ig-high');
-            
-            // Ajouter la nouvelle classe selon la valeur
-            const igClass = getIGClass(igValue);
-            item.classList.add(igClass);
-            
-            console.log(`  🎨 IG = ${igValue} → classe "${igClass}" appliquée`);
-          } else {
-            console.log(`  ⚠️ Impossible de parser la valeur: "${valueText}"`);
-          }
+      const val   = item.querySelector('.summaryValue');
+      if (!label || !val) return;
+      const txt = label.textContent.trim().toLowerCase();
+      if (txt.includes('ig') || txt.includes('index') || txt.includes('glycémique')) {
+        const igValue = parseInt(val.textContent.replace(/[^\d]/g, ''));
+        if (!isNaN(igValue)) {
+          item.classList.remove('ig-low', 'ig-medium', 'ig-high');
+          item.classList.add(getIGClass(igValue));
         }
       }
     });
   }
-  
-  // Observer les changements dans plateSummary
+
   const plateSummary = document.getElementById('plateSummary');
   if (plateSummary) {
-    console.log('👀 Observer installé sur plateSummary');
-    
-    // Observer initial (après un petit délai)
-    setTimeout(() => {
-      console.log('🔄 Coloration initiale...');
-      colorerBlocIG();
-    }, 100);
-    
-    // Observer les changements futurs
-    const observer = new MutationObserver((mutations) => {
-      console.log(`🔄 ${mutations.length} mutation(s) détectée(s), re-coloration...`);
-      colorerBlocIG();
-    });
-    
-    observer.observe(plateSummary, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
-  } else {
-    console.log('❌ plateSummary introuvable au chargement');
+    const observer = new MutationObserver(colorerBlocIG);
+    observer.observe(plateSummary, { childList: true, subtree: true, characterData: true });
   }
 })();
 </script>
@@ -2948,16 +2825,16 @@
   8. simple-mode-*     — SimpleModeData + SimpleModeWizard
   9. app.js en dernier — instancie FoodSearchUI et SimpleModeWizard une seule fois
 -->
-<script src="storage.js"></script>
-<script src="bolusMath.js"></script>
-<script src="units.js"></script>
-<script src="notifications.js"></script>
-<script src="food-database.js"></script>
-<script src="bolus-optimizer.js"></script>
-<script src="food-search-ui.js"></script>
-<script src="simple-mode-data.js"></script>
-<script src="simple-mode-wizard.js"></script>
-<script src="app.js"></script>
+<script src="storage.js?v=2.1"></script>
+<script src="bolusMath.js?v=2.1"></script>
+<script src="units.js?v=2.1"></script>
+<script src="notifications.js?v=2.1"></script>
+<script src="food-database.js?v=2.1"></script>
+<script src="bolus-optimizer.js?v=2.1"></script>
+<script src="food-search-ui.js?v=2.1"></script>
+<script src="simple-mode-data.js?v=2.1"></script>
+<script src="simple-mode-wizard.js?v=2.1"></script>
+<script src="app.js?v=2.1"></script>
 
 </body>
 </html>

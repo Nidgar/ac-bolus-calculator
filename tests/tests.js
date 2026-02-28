@@ -155,7 +155,30 @@ suite('BolusMath — Sécurité (entrées invalides)');
   assert('calcRepas : icr=0 → NaN',             isNaN(BolusMath.calcRepas(60, 0)));
   assert('calcTotal : correction=NaN → NaN',    isNaN(BolusMath.calcTotal(NaN, 4.8)));
   assert('roundToStep : n=NaN → NaN',           isNaN(BolusMath.roundToStep(NaN, 0.1)));
-  assert('roundToStep : step=0 → retourne n',   near(BolusMath.roundToStep(3.14, 0), 3.14));
+  assert('roundToStep : step=0 → fallback 0.1 (3.14 → 3.1)', near(BolusMath.roundToStep(3.14, 0), 3.1));
+})();
+
+
+suite('BolusMath — STEP1 : step invalide → fallback 0.1 garanti');
+(() => {
+  // step=0 → fallback 0.1
+  assert('STEP1 : step=0 → arrondi à 0.1',         near(BolusMath.roundToStep(6.3556, 0), 6.4, 0.001));
+  // step=NaN → fallback 0.1
+  assert('STEP1 : step=NaN → arrondi à 0.1',        near(BolusMath.roundToStep(6.3556, NaN), 6.4, 0.001));
+  // step=-1 → fallback 0.1
+  assert('STEP1 : step=-1 → arrondi à 0.1',         near(BolusMath.roundToStep(6.3556, -1), 6.4, 0.001));
+  // step=Infinity → fallback 0.1
+  assert('STEP1 : step=Infinity → arrondi à 0.1',   near(BolusMath.roundToStep(6.3556, Infinity), 6.4, 0.001));
+  // step valide 0.5 → pas de fallback, arrondi normal
+  assert('STEP1 : step=0.5 valide → pas de fallback', near(BolusMath.roundToStep(6.3556, 0.5), 6.5));
+  // step valide 1 → arrondi à 1
+  assert('STEP1 : step=1 valide → arrondi à 1',      near(BolusMath.roundToStep(6.3556, 1), 6));
+  // STEP_DEFAULT exposé = 0.1
+  assert('STEP1 : STEP_DEFAULT = 0.1',               near(BolusMath.STEP_DEFAULT, 0.1));
+  // calcBolus avec step=0 utilise le fallback → résultat arrondi (pas brut)
+  const r0 = BolusMath.calcBolus({ glycemie:180, objectif:110, glucides:60, basale:25, rapide:15, step:0 });
+  const rOk = BolusMath.calcBolus({ glycemie:180, objectif:110, glucides:60, basale:25, rapide:15, step:0.1 });
+  assert('STEP1 : calcBolus(step=0) = calcBolus(step=0.1)', near(r0.totalArrondi, rOk.totalArrondi));
 })();
 
 

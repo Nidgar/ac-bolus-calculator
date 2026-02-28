@@ -44,8 +44,8 @@
         'validateMealBtn',    // Bouton "Valider mon repas"
       ],
       optional: [
-        'statusFast',         // Zone de statut du calculateur (fallback: 'status')
-        'status',             // Fallback si statusFast absent
+        // 'statusFast' et 'status' retirés : statusFast existe toujours dans le HTML,
+        // 'status' (nu) n'a jamais été créé — fallback géré dans le code via el.statusFast || el.status.
       ],
     },
 
@@ -55,8 +55,8 @@
         'simpleModeContainer',    // Container écran d'accueil mode simple
       ],
       optional: [
-        'recapAliments',          // Accordéon récap aliments
-        'recapAccordeonBtn',      // Bouton accordéon récap
+        // 'recapAliments' et 'recapAccordeonBtn' retirés : injectés dynamiquement
+        // par SimpleModeWizard.renderRecap() — absents au boot, c'est voulu.
       ],
     },
 

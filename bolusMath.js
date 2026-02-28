@@ -105,18 +105,26 @@ const BolusMath = (() => {
   }
 
   /**
+  // ─── Constante step ───────────────────────────────────────────────────
+  /** Pas d'arrondi par défaut (stylo insuline standard). */
+  const STEP_DEFAULT = 0.1;
+
+  /**
    * Arrondit une dose à l'incrément demandé (step).
    * Utilisé uniquement pour l'AFFICHAGE — les calculs internes restent précis.
    *
+   * Si `step` est invalide (≤ 0, NaN, non-fini), applique le fallback STEP_DEFAULT
+   * plutôt que de retourner `n` brut silencieusement.
+   *
    * @param {number} n     - Valeur à arrondir
-   * @param {number} step  - Incrément (ex: 0.1, 0.5, 1)
-   * @returns {number} Valeur arrondie (NaN si entrée invalide)
+   * @param {number} step  - Incrément (ex: 0.1, 0.5, 1). Fallback 0.1 si invalide.
+   * @returns {number} Valeur arrondie (NaN si n invalide)
    */
   function roundToStep(n, step) {
     if (!Number.isFinite(n)) return NaN;
     const s = Number(step);
-    if (!Number.isFinite(s) || s <= 0) return n;
-    return Math.round(n / s) * s;
+    const safeStep = (Number.isFinite(s) && s > 0) ? s : STEP_DEFAULT;
+    return Math.round(n / safeStep) * safeStep;
   }
 
   /**
@@ -162,6 +170,7 @@ const BolusMath = (() => {
     // Constantes exposées pour les tests
     ICR_CONSTANT,
     FSI_CONSTANT,
+    STEP_DEFAULT,
   };
 
 })();
