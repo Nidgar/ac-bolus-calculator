@@ -394,10 +394,26 @@ class FoodDatabase {
    * @param {number} igMean - IG moyen du repas (champ ig_mean de MealMetrics)
    * @returns {{ timing: string, icon: string, message: string }}
    */
-  suggestBolusTiming(igMean) {
+  /**
+   * Suggère un timing de bolus selon l'IG moyen ET la charge glycémique (CG).
+   * La CG module la durée du bolus prolongé pour les IG élevés.
+   *
+   * @param {number} igMean   - Index glycémique moyen du repas
+   * @param {number} [cgTotal=0] - Charge glycémique totale du repas
+   * @returns {{ timing: string, icon: string, message: string }}
+   */
+  suggestBolusTiming(igMean, cgTotal = 0) {
     if (igMean < 55) return { timing: 'normal', icon: '🟢', message: 'Bolus normal : 10-15 min avant le repas' };
     if (igMean < 70) return { timing: 'fast',   icon: '🟡', message: 'Bolus rapide : 5-10 min avant le repas' };
-    return              { timing: 'split',  icon: '🔴', message: 'Bolus fractionné suggéré : 60% avant, 40% après 30-45 min' };
+    // IG ≥ 70 → bolus en 2 temps, durée modulée par la CG
+    let duree;
+    if      (cgTotal < 20) duree = '~1h après';
+    else if (cgTotal < 40) duree = '1h à 1h30 après';
+    else                   duree = '1h30 à 2h après';
+    return { timing: 'split', icon: '🔴',
+      message: `IG élevé : envisage un bolus en 2 temps — une partie avant, le reste ${duree} selon la durée du repas.`,
+      cg_level: cgTotal < 10 ? 'basse' : cgTotal < 20 ? 'moyenne' : 'élevée'
+    };
   }
 
   /** Nombre total d'aliments dans la base. */

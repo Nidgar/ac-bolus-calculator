@@ -13,6 +13,7 @@ class SimpleModeWizard {
     this.selections = {};
     this.totalGlucides = 0;
     this.totalIG = 0;
+    this.totalCG = 0;
 
     // Garde-fou listeners : attachés une seule fois
     this._listenersAttached = false;
@@ -43,6 +44,7 @@ class SimpleModeWizard {
     this.selections = {};
     this.totalGlucides = 0;
     this.totalIG = 0;
+    this.totalCG = 0;
     this.ouvrirWizard();
     this.afficherEtape();
   }
@@ -160,6 +162,9 @@ class SimpleModeWizard {
     this.selections = {};
     this.totalGlucides = 0;
     this.totalIG = 0;
+    this.totalCG = 0;
+    // P2 Issue 7 — Déverrouiller le champ glucides si le wizard est relancé
+    if (typeof unlockCarbField === 'function') unlockCarbField();
     this.afficherEtape();
   }
 
@@ -202,6 +207,7 @@ class SimpleModeWizard {
                 data-multi="${etape.multiSelect}">
           <div class="alimentEmoji">${aliment.emoji}</div>
           <div class="alimentNom">${aliment.nom}</div>
+          ${aliment.portion ? `<div class="alimentPortion">${aliment.portion}</div>` : ''}
           <div class="alimentGlucides">${aliment.glucides > 0 ? '+' + aliment.glucides + 'g' : '0g'}</div>
           ${isSelected ? '<div class="alimentCheck">✓</div>' : ''}
         </button>
@@ -279,6 +285,7 @@ class SimpleModeWizard {
                 data-multi="${sousEtape.multiSelect}">
           <div class="alimentEmoji">${aliment.emoji}</div>
           <div class="alimentNom">${aliment.nom}</div>
+          ${aliment.portion ? `<div class="alimentPortion">${aliment.portion}</div>` : ''}
           <div class="alimentGlucides">${aliment.glucides > 0 ? '+' + aliment.glucides + 'g' : '0g'}</div>
           ${isSelected ? '<div class="alimentCheck">✓</div>' : ''}
         </button>
@@ -370,18 +377,25 @@ class SimpleModeWizard {
   calculerTotaux() {
     let totalGlucides = 0;
     let totalIGPondere = 0;
+    let totalCG = 0;
     for (const [, selections] of Object.entries(this.selections)) {
       if (Array.isArray(selections)) {
         selections.forEach(a => {
-          totalGlucides += a.glucides || 0;
-          totalIGPondere += (a.glucides || 0) * (a.ig || 0);
+          const gluc = a.glucides || 0;
+          const ig   = a.ig       || 0;
+          totalGlucides  += gluc;
+          totalIGPondere += gluc * ig;
+          totalCG        += (gluc * ig) / 100; // CG = (glucides × IG) / 100
         });
       } else if (typeof selections === 'object') {
         for (const [, liste] of Object.entries(selections)) {
           if (Array.isArray(liste)) {
             liste.forEach(a => {
-              totalGlucides += a.glucides || 0;
-              totalIGPondere += (a.glucides || 0) * (a.ig || 0);
+              const gluc = a.glucides || 0;
+              const ig   = a.ig       || 0;
+              totalGlucides  += gluc;
+              totalIGPondere += gluc * ig;
+              totalCG        += (gluc * ig) / 100;
             });
           }
         }
@@ -389,6 +403,7 @@ class SimpleModeWizard {
     }
     this.totalGlucides = Math.round(totalGlucides);
     this.totalIG = totalGlucides > 0 ? Math.round(totalIGPondere / totalGlucides) : 0;
+    this.totalCG = Math.round(totalCG * 10) / 10; // 1 décimale
   }
 
   afficherSelectionsActuelles() {
@@ -523,10 +538,13 @@ class SimpleModeWizard {
       carbsInput.dispatchEvent(new Event('change', { bubbles: true }));
       carbsInput.dispatchEvent(new Event('blur', { bubbles: true }));
       console.log(`✅ ${this.totalGlucides}g glucides injectés dans le calculateur`);
+      // P2 Issue 7 — Verrouiller le champ après injection pour éviter la double saisie
+      if (typeof lockCarbField === 'function') lockCarbField('wizard-simple');
 
       const statusNode = document.getElementById('statusFast') || document.getElementById('status');
       if (statusNode) {
-        const conseil = this.getConseilBolus();
+        const conseil  = this.getConseilBolus();
+        const isSplit  = conseil.split === true;
         statusNode.innerHTML = `
           <div class="wizard-message" data-wizard-preserved="true" style="display:flex;width:100%;gap:16px;align-items:flex-start;">
             <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;">
@@ -535,14 +553,48 @@ class SimpleModeWizard {
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
               <div style="font-weight:900;font-size:16px;">🍬 ${this.totalGlucides}g de glucides • 📊 IG moyen: ${this.totalIG}</div>
+              ${isSplit ? `
+              <button
+                id="applyIGOptimBtn"
+                style="width:100%;padding:10px 14px;background:rgba(251,191,36,0.18);color:inherit;border:1.5px solid rgba(251,191,36,0.5);border-radius:10px;cursor:pointer;font-weight:800;font-size:14px;text-align:center;"
+                aria-expanded="false"
+                aria-controls="igOptimContentWizard"
+              >${conseil.icon} Voir recommandation timing (IG élevé)</button>
+              <div id="igOptimContentWizard" hidden style="display:flex;flex-direction:column;gap:8px;">
+                <div style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;">
+                  📚 <strong>Recommandation éducative — non médicale.</strong><br>
+                  Consultez votre équipe soignante avant tout changement d'injection.
+                </div>
+                <div style="padding:10px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-weight:800;font-size:14px;">
+                  ${conseil.icon} ${conseil.message}
+                </div>
+              </div>
+              ` : `
               <div style="padding:10px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-weight:800;font-size:14px;">
                 ${conseil.icon} ${conseil.message}
               </div>
+              `}
             </div>
           </div>
         `;
         statusNode.className = 'status ok';
         statusNode.style.display = 'block';
+
+        const applyBtn = document.getElementById('applyIGOptimBtn');
+        if (applyBtn) {
+          applyBtn.addEventListener('click', () => {
+            const content = document.getElementById('igOptimContentWizard');
+            const isOpen  = applyBtn.getAttribute('aria-expanded') === 'true';
+            applyBtn.setAttribute('aria-expanded', String(!isOpen));
+            if (content) content.hidden = isOpen;
+            if (!isOpen) {
+              applyBtn.textContent = `${conseil.icon} Recommandation timing affichée ✓`;
+              applyBtn.style.textAlign = 'center';
+              applyBtn.style.background = 'rgba(52,211,153,0.15)';
+              applyBtn.style.borderColor = 'rgba(52,211,153,0.5)';
+            }
+          });
+        }
       }
       this.fermerWizard();
     } else {
@@ -570,14 +622,23 @@ class SimpleModeWizard {
 
   getIGColor() {
     if (this.totalIG < 55) return '🟢';
-    if (this.totalIG <= 70) return '🟡';
+    if (this.totalIG <  70) return '🟡';
     return '🔴';
   }
 
   getConseilBolus() {
-    if (this.totalIG < 55) return { icon: '🟢', message: 'Bolus normal : 10-15 min avant le repas' };
-    if (this.totalIG <= 70) return { icon: '🟡', message: 'Bolus rapide : 5-10 min avant le repas' };
-    return { icon: '🔴', message: 'Bolus fractionné : 60% avant, 40% après 30-45 min' };
+    if (this.totalIG < 55) return { icon: '🟢', message: 'Bolus normal : 10-15 min avant le repas', split: false };
+    if (this.totalIG <  70) return { icon: '🟡', message: 'Bolus rapide : 5-10 min avant le repas', split: false };
+    // IG > 70 → bolus en 2 temps, durée modulée par la CG
+    let duree;
+    if      (this.totalCG < 20) duree = '~1h après';
+    else if (this.totalCG < 40) duree = '1h à 1h30 après';
+    else                        duree = '1h30 à 2h après';
+    return {
+      icon: '🔴',
+      message: `IG élevé : envisage un bolus en 2 temps — une partie avant, le reste ${duree} selon la durée du repas.`,
+      split: true
+    };
   }
 }
 

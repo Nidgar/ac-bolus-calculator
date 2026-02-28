@@ -129,8 +129,20 @@ class FoodSearchUI {
     const plateSummary = document.getElementById('plateSummary');
     if (plateSummary) {
       plateSummary.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-action="reset"]');
-        if (btn) this.resetPlate();
+        const resetBtn = e.target.closest('[data-action="reset"]');
+        if (resetBtn) { this.resetPlate(); return; }
+
+        // Bouton "Voir conseil timing bolus" — révèle la suggestion IG/CG
+        const revealBtn = e.target.closest('[data-action="reveal-ig-timing"]');
+        if (revealBtn) {
+          const content = document.getElementById('igTimingContent');
+          const isOpen  = revealBtn.getAttribute('aria-expanded') === 'true';
+          revealBtn.setAttribute('aria-expanded', String(!isOpen));
+          if (content) content.hidden = isOpen;
+          revealBtn.textContent = isOpen
+            ? `💡 Voir conseil timing bolus`
+            : `✓ Conseil timing affiché`;
+        }
       });
     }
 
@@ -192,13 +204,20 @@ class FoodSearchUI {
       return;
     }
 
-    container.innerHTML = results.map(food => `
+    container.innerHTML = results.map(food => {
+      // Glucides réels pour la portion usuelle (= ce que l'utilisateur va consommer)
+      const glucPortion = Math.round(food.glucides * food.portion_usuelle.quantite / 100);
+      return `
       <div class="foodItem" data-food-id="${food.id}">
         <div class="info">
           <div class="name">${food.category_icon} ${food.nom}</div>
-          <div class="meta">
-            ${food.glucides}g glucides • IG: ${food.ig} • 
-            Portion: ${food.portion_usuelle.quantite}${food.portion_usuelle.unite}
+          <div class="meta" style="display:flex; flex-direction:column; gap:3px; margin-top:3px;">
+            <span style="font-size:11px; opacity:0.6; font-weight:500;">
+              📊 Valeurs pour 100g — ${food.glucides}g glucides • IG : ${food.ig}
+            </span>
+            <span style="font-size:13px; font-weight:800; color: var(--good, #4ade80);">
+              🍽️ Portion usuelle : ${food.portion_usuelle.description} (${food.portion_usuelle.quantite}g) → ~${glucPortion}g glucides
+            </span>
           </div>
         </div>
         <button 
@@ -210,7 +229,7 @@ class FoodSearchUI {
           + Ajouter
         </button>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   /**
@@ -316,7 +335,10 @@ class FoodSearchUI {
         <div class="plateItem">
           <div class="itemInfo">
             <div class="itemName">${food.category_icon} ${food.nom}</div>
-            <div class="itemMeta">${glucides}g glucides • IG: ${food.ig}</div>
+            <div class="itemMeta">
+              <span style="font-weight:800;">${glucides}g glucides</span>
+              <span style="font-size:11px; opacity:0.6;"> (base : ${food.glucides}g/100g • IG: ${food.ig})</span>
+            </div>
           </div>
           <input 
             type="number" 
@@ -343,7 +365,7 @@ class FoodSearchUI {
 
     const meal   = this.db.calculateMeal(this.myPlate);  // MealMetrics brut
     const fmt    = MealMetrics.format(meal);             // arrondis UI ici uniquement
-    const timing = this.db.suggestBolusTiming(meal.ig_mean);
+    const timing = this.db.suggestBolusTiming(meal.ig_mean, meal.cg_total);
 
     const igColor = this.getIGColor(meal.ig_mean);
     const cgColor = this.getCGColor(meal.cg_total);
@@ -364,8 +386,24 @@ class FoodSearchUI {
             <div class="summaryValue" style="color: ${cgColor};">${fmt.cg_total}</div>
           </div>
         </div>
-        <div class="timingSuggestion">
-          ${timing.icon} ${timing.message}
+        <div class="igTimingWrapper">
+          <button
+            class="igTimingRevealBtn"
+            data-action="reveal-ig-timing"
+            aria-expanded="false"
+            aria-controls="igTimingContent"
+          >
+            💡 Voir conseil timing bolus (IG ${fmt.ig_mean})
+          </button>
+          <div id="igTimingContent" class="igTimingContent" hidden>
+            <div class="igTimingDisclaimer">
+              📚 <strong>Recommandation éducative — non médicale.</strong><br>
+              Consultez votre équipe soignante avant tout changement de schéma d'injection.
+            </div>
+            <div class="timingSuggestion">
+              ${timing.icon} ${timing.message}
+            </div>
+          </div>
         </div>
         <button 
           data-action="reset"
@@ -397,14 +435,17 @@ class FoodSearchUI {
       this.carbsInput.dispatchEvent(new Event('input', { bubbles: true }));
       this.carbsInput.dispatchEvent(new Event('change', { bubbles: true }));
       this.carbsInput.dispatchEvent(new Event('blur', { bubbles: true }));
+      // P2 Issue 7 — Verrouiller le champ après injection pour éviter la double saisie
+      if (typeof lockCarbField === 'function') lockCarbField('wizard-initie');
     }
 
     this.togglePanel();
 
     const statusNode = document.getElementById('statusFast') || document.getElementById('status');
     if (statusNode) {
-      const timing  = this.db.suggestBolusTiming(meal.ig_mean);
+      const timing  = this.db.suggestBolusTiming(meal.ig_mean, meal.cg_total);
       const fmtVal  = MealMetrics.format(meal);
+      const isSplit = timing.timing === 'split';
       statusNode.innerHTML = `
         <div style="display: flex; width: 100%; gap: 16px; align-items: flex-start;">
           <div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;">
@@ -415,14 +456,49 @@ class FoodSearchUI {
             <div style="font-weight: 900; font-size: 16px;">
               🍞 ${fmtVal.carbs_g}g de glucides • 📊 IG moyen: ${fmtVal.ig_mean}
             </div>
+            ${isSplit ? `
+            <button
+              id="applyIGOptimBtn"
+              style="width:100%; padding:10px 14px; background:rgba(251,191,36,0.18); color:inherit; border:1.5px solid rgba(251,191,36,0.5); border-radius:10px; cursor:pointer; font-weight:800; font-size:14px; text-align:center;"
+              aria-expanded="false"
+              aria-controls="igOptimContent"
+            >
+              ${timing.icon} Voir recommandation timing (IG élevé)
+            </button>
+            <div id="igOptimContent" hidden style="padding:10px 12px; background:rgba(255,255,255,0.08); border-radius:8px; font-size:13px;">
+              <div style="background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.4); border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:12px; line-height:1.5;">
+                📚 <strong>Recommandation éducative — non médicale.</strong><br>
+                Ce conseil est à titre informatif uniquement.<br>
+                Consultez votre équipe soignante avant tout changement.
+              </div>
+              <div style="font-weight: 800;">${timing.icon} ${timing.message}</div>
+            </div>
+            ` : `
             <div style="padding: 10px 12px; background: rgba(255,255,255,0.1); border-radius: 8px; font-weight: 800; font-size: 14px;">
               ${timing.icon} ${timing.message}
             </div>
+            `}
           </div>
         </div>
       `;
       statusNode.className = 'status ok';
       statusNode.style.display = 'block';
+
+      const applyBtn = document.getElementById('applyIGOptimBtn');
+      if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+          const content = document.getElementById('igOptimContent');
+          const isOpen  = applyBtn.getAttribute('aria-expanded') === 'true';
+          applyBtn.setAttribute('aria-expanded', String(!isOpen));
+          if (content) content.hidden = isOpen;
+          if (!isOpen) {
+            applyBtn.textContent = `${timing.icon} Recommandation timing affichée ✓`;
+            applyBtn.style.textAlign = 'center';
+            applyBtn.style.background = 'rgba(52,211,153,0.15)';
+            applyBtn.style.borderColor = 'rgba(52,211,153,0.5)';
+          }
+        });
+      }
     }
 
     console.log(`✅ Repas validé : ${MealMetrics.format(meal).carbs_g}g glucides, IG ${meal.ig_mean}`);

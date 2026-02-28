@@ -263,7 +263,7 @@
     .input-error{ border-color: rgba(251,113,133,0.65) !important; box-shadow: 0 0 0 3px rgba(251,113,133,0.18) !important; }
     
     /* Effet néon pour les champs obligatoires non remplis */
-    input[type="number"].input-required-empty{
+    input[type="number"].input-required-empty, input[type="text"].input-required-empty{
       border-color: rgba(110,231,255,0.85);
       box-shadow:
         0 0 0 2px rgba(110,231,255,0.22),
@@ -333,7 +333,7 @@
       line-height: 1;
     }
     
-    input[type="number"], select{
+    input[type="number"], input[type="text"], select{
       width: 100%;
       padding: 12px 12px;
       border-radius: 14px;
@@ -344,6 +344,7 @@
       font-size: 16px;
     }
     :root[data-theme="clair"] input[type="number"],
+    :root[data-theme="clair"] input[type="text"],
     :root[data-theme="clair"] select{
       background: rgba(255,255,255,0.90);
       border-color: rgba(0,0,0,0.25);
@@ -355,7 +356,7 @@
       visibility:hidden; white-space: nowrap; overflow: hidden; }
     .fieldError.show{ visibility:visible; }
 
-    input[type="number"]:focus, select:focus{
+    input[type="number"]:focus, input[type="text"]:focus, select:focus{
       box-shadow: var(--focus);
       border-color: rgba(110,231,255,0.55);
     }
@@ -487,6 +488,8 @@
     .metric .v{ font-size: 20px; font-weight: 950; font-variant-numeric: tabular-nums; }
 
     .hidden{ display:none !important; }
+    /* Garantit que l'attribut HTML hidden prime sur tout display CSS (ex: flex/grid) */
+    [hidden]{ display:none !important; }
 
     /* Bouton toggle détails bolus (mode simple) */
     .toggle-details-btn {
@@ -885,6 +888,50 @@
     :root[data-theme="clair"] .plateSummary .timingSuggestion{
       background: rgba(255,255,255,0.5);
     }
+
+    /* ── Issue 2 P0 : Opt-in conseil IG/CG ─────────────────────────────── */
+    .igTimingWrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .igTimingRevealBtn {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(99,102,241,0.12);
+      color: inherit;
+      border: 1.5px solid rgba(99,102,241,0.3);
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 13px;
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .igTimingRevealBtn:hover {
+      background: rgba(99,102,241,0.22);
+    }
+    .igTimingContent {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .igTimingDisclaimer {
+      background: rgba(251,191,36,0.12);
+      border: 1px solid rgba(251,191,36,0.35);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.55;
+      font-weight: 600;
+    }
+    :root[data-theme="clair"] .igTimingRevealBtn {
+      background: rgba(99,102,241,0.08);
+      border-color: rgba(99,102,241,0.25);
+    }
+    :root[data-theme="clair"] .igTimingDisclaimer {
+      background: rgba(251,191,36,0.1);
+    }
     
     .validateMealBtn{
       width: 100%;
@@ -1230,6 +1277,54 @@
       max-width: 100%;  /* Ne dépasse jamais 100% */
     }
     
+    /* P2 Issue 7 — Champ glucides verrouillé par le wizard */
+    #carbFast[readonly] {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.15) !important;
+    }
+    .carbWizardLock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .carbWizardLock button {
+      margin-left: auto;
+      padding: 3px 10px;
+      background: rgba(99,102,241,0.2);
+      border: 1px solid rgba(99,102,241,0.4);
+      border-radius: 6px;
+      color: inherit;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .carbWizardLock button:hover {
+      background: rgba(99,102,241,0.35);
+    }
+
+    .alimentPortion {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--muted);
+      opacity: 0.7;
+      text-align: center;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
     .alimentGlucides {
       font-size: 12px;
       font-weight: 900;
@@ -1615,7 +1710,7 @@
           <label>
             <div class="label">Objectif glycémie (mg/dL)</div>
             <div class="fieldLine">
-              <input id="objectif" type="number" inputmode="numeric" min="70" max="180" step="1" value="110">
+              <input id="objectif" type="text" inputmode="numeric" min="70" max="180" step="1" value="110">
               <div id="objectifErr" class="fieldError" role="status" aria-live="polite">⚠️ 70–180</div>
             </div>
           </label>
@@ -1645,7 +1740,7 @@
             <label>
               <div class="label">Insuline basale (U / jour) — 20 à 35</div>
               <div class="fieldLine">
-                <input id="basale" type="number" inputmode="decimal" min="20" max="35" step="0.5" value="" placeholder="20–35">
+                <input id="basale" type="text" inputmode="decimal" min="20" max="35" step="0.5" value="" placeholder="20–35">
                 <div id="basaleErr" class="fieldError" role="status" aria-live="polite">⚠️ 20–35</div>
               </div>
             </label>
@@ -1653,7 +1748,7 @@
             <label>
               <div class="label">Insuline rapide totale (U / jour) — 10 à 25</div>
               <div class="fieldLine">
-                <input id="rapide" type="number" inputmode="decimal" min="10" max="25" step="0.5" value="" placeholder="10–25">
+                <input id="rapide" type="text" inputmode="decimal" min="10" max="25" step="0.5" value="" placeholder="10–25">
                 <div id="rapideErr" class="fieldError" role="status" aria-live="polite">⚠️ 10–25</div>
               </div>
             </label>
@@ -1664,6 +1759,7 @@
             <div class="metric"><div class="k">ICR — 500÷DTQ (g/U)</div><div id="icr" class="v">—</div></div>
             <div class="metric"><div class="k">FSI — 1800÷DTQ (mg/dL/U)</div><div id="fsi" class="v">—</div></div>
           </div>
+          <div id="fsiWarn" class="fieldError" role="alert" aria-live="assertive" style="display:none; margin-top:8px;"></div>
         </details>
 
         <details>
@@ -1685,8 +1781,9 @@
             <span class="label-icon">🩸</span> Glycémie actuelle (<span id="glyUnitLabel">mg/dL</span>)
           </div>
           <div class="fieldLine">
-            <input id="glyFast" type="number" inputmode="numeric" min="50" max="500" step="1" value="" placeholder="Entre 50 et 500">
+            <input id="glyFast" type="text" inputmode="decimal" min="50" step="1" value="" placeholder="Entre 50 et 500">
             <div id="glyFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glycémie hors plage (50–500 mg/dL ou 0.5–6 g/L).</div>
+            <div id="glyDangerBadge" role="alert" aria-live="assertive" style="display:none; margin-top:6px; padding:8px 12px; border-radius:10px; font-size:13px; font-weight:800; line-height:1.4;"></div>
           </div>
         </div>
 
@@ -1695,8 +1792,12 @@
             <span class="label-icon">🍬</span> Glucides du repas (g)
           </div>
           <div class="fieldLine">
-            <input id="carbFast" type="number" inputmode="numeric" min="0" max="200" step="1" value="" placeholder="Entre 0 et 200">
+            <input id="carbFast" type="text" inputmode="numeric" min="0" max="200" step="1" value="" placeholder="Entre 0 et 200">
             <div id="carbFastErr" class="fieldError" role="status" aria-live="polite">⚠️ Glucides hors plage (0 à 200).</div>
+            <div id="carbWizardLockBadge" class="carbWizardLock" style="display:none;" role="status" aria-live="polite">
+              🔒 Valeur saisie via le repas
+              <button id="carbUnlockBtn" type="button" aria-label="Modifier manuellement les glucides">🔓 Modifier</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1855,12 +1956,14 @@
   const rangeOk = (n, min, max) => Number.isFinite(n) && n >= min && n <= max;
 
   // -------------------- Constants --------------------
-  const GLY_MIN = 50, GLY_MAX = 500;
+  const GLY_MIN = 50, GLY_MAX = 600; // P0 audit: warning fort >600, blocage g/L >10
   const CARB_MIN = 0, CARB_MAX = 200;
   const TARGET_MIN = 70, TARGET_MAX = 180;
 
   const MIN_BASALE = 20, MAX_BASALE = 35;
   const MIN_RAPIDE = 10,  MAX_RAPIDE = 25;
+  // P0 Issue 3 — FSI inversé : plage physiologique acceptable du FSI calculé
+  const FSI_MIN = 10,  FSI_MAX = 150;  // mg/dL/U — blocage si FSI < 5 (critère audit)
 
   // -------------------- AppStorage (inline) --------------------
   // AppStorage doit être disponible avant l'objet Storage ci-dessous.
@@ -2107,7 +2210,9 @@
     // fast inputs
     glyFast: $("glyFast"),
     carbFast: $("carbFast"),
+    carbWizardLockBadge: $("carbWizardLockBadge"),
     glyFastErr: $("glyFastErr"),
+    glyDangerBadge: $("glyDangerBadge"),
     carbFastErr: $("carbFastErr"),
 
     // unit labels (dynamic)
@@ -2125,6 +2230,7 @@
     dtq: $("dtq"),
     icr: $("icr"),
     fsi: $("fsi"),
+    fsiWarn: $("fsiWarn"),
     icrBadgeFast: $("icrBadgeFast"),
     fsiBadgeFast: $("fsiBadgeFast"),
 
@@ -2260,6 +2366,10 @@
     return ok;
   }
 
+  /**
+   * Valide basale/rapide ET le FSI calculé résultant.
+   * P0 Issue 3 : FSI hors plage [FSI_MIN, FSI_MAX] → warning + blocage si FSI < 5.
+   */
   function updateRatioAlert(basale, rapide){
     const ok = ratiosInRange(basale, rapide);
     if(el.ratioAlert){
@@ -2267,7 +2377,40 @@
     }
     setFieldError(el.basale, el.basaleErr, Touched.basale && !(Number.isFinite(basale) && basale >= MIN_BASALE && basale <= MAX_BASALE));
     setFieldError(el.rapide, el.rapideErr, Touched.rapide && !(Number.isFinite(rapide) && rapide >= MIN_RAPIDE && rapide <= MAX_RAPIDE));
-    return ok;
+
+    // ── Validation du FSI calculé (P0 Issue 3) ─────────────────────────
+    let fsiOk = true;
+    if (el.fsiWarn) {
+      if (ok) {
+        const dtq = basale + rapide;
+        const fsi = 1800 / dtq;
+        if (fsi < 5) {
+          // Blocage dur — FSI < 5 : correction serait dangereusement élevée
+          el.fsiWarn.textContent = `🚫 FSI calculé : ${fsi.toFixed(1)} mg/dL/U — valeur impossible (< 5). Vérifiez vos doses d'insuline.`;
+          el.fsiWarn.style.display = 'block';
+          fsiOk = false;
+        } else if (fsi < FSI_MIN) {
+          // Warning fort — FSI très bas (correction puissante)
+          el.fsiWarn.textContent = `⚠️ FSI calculé : ${fsi.toFixed(1)} mg/dL/U — très sensible (norme : 10–150 mg/dL/U). Confirmez avec votre équipe soignante.`;
+          el.fsiWarn.style.display = 'block';
+          fsiOk = false;
+        } else if (fsi > FSI_MAX) {
+          // Warning fort — FSI très élevé (correction faible, possible sous-dosage)
+          el.fsiWarn.textContent = `⚠️ FSI calculé : ${fsi.toFixed(1)} mg/dL/U — valeur inhabituelle (norme : 10–150 mg/dL/U). Vérifiez vos doses.`;
+          el.fsiWarn.style.display = 'block';
+          fsiOk = false;
+        } else {
+          el.fsiWarn.style.display = 'none';
+          el.fsiWarn.textContent = '';
+        }
+      } else {
+        el.fsiWarn.style.display = 'none';
+        el.fsiWarn.textContent = '';
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────
+
+    return ok && fsiOk;
   }
 
   function validateTarget(){
@@ -2299,6 +2442,37 @@
     return { basale, rapide, objectif: tv.target, step, ratiosOk:true, targetOk:true, dtq, icr, fsi };
   }
 
+  // -------------------- Sécurité P0 : popup confirmation unité glycémie --------------------
+  let _lastGlyWarnValue = null; // anti-spam : ne répète pas le popup pour la même valeur
+
+  /**
+   * Affiche un popup de confirmation quand la valeur saisie est suspecte.
+   * @param {number} rawVal  - Valeur brute saisie
+   * @param {'mgdl-overflow'} type
+   */
+  function _showGlyUnitWarning(rawVal, type) {
+    if (type === 'mgdl-overflow') {
+      const asGl   = GlyUnits.mgdlToGl(rawVal);          // ex: 180 → 1.8 g/L
+      const asMgdl = Math.round(rawVal);                   // la valeur telle que saisie
+      const msg =
+        `⚠️ Vérification unité glycémie\n\n` +
+        `Vous avez saisi : ${asMgdl}\n\n` +
+        `• En mg/dL → ${asMgdl} mg/dL (très élevé, hyperglycémie sévère)\n` +
+        `• En g/L   → ${asMgdl} g/L = ${asMgdl * 100} mg/dL (valeur physiologiquement impossible)\n\n` +
+        `Si vous êtes bien en mg/dL, la valeur sera acceptée.\n` +
+        `Sinon, corrigez votre saisie ou changez d'unité.`;
+      // Utilise window.confirm natif (synchrone, accessible, pas de dépendance)
+      const confirmed = window.confirm(msg);
+      if (!confirmed) {
+        // Vider le champ → force re-saisie
+        if (el.glyFast) {
+          el.glyFast.value = '';
+          _lastGlyWarnValue = null;
+        }
+      }
+    }
+  }
+
   // -------------------- Inputs validation (fast mode only) --------------------
   function validateMealInputs(){
     const rawGly = el.glyFast?.value ?? '';
@@ -2306,11 +2480,12 @@
 
     // --- Détection automatique de l'unité glycémie ---
     const detectedUnit = GlyUnits.detectUnit(rawGly); // 'mgdl' | 'gl' | 'unknown'
+    const rawNum = Util.toNumber(rawGly);
     let g;
     if (detectedUnit === 'gl') {
       g = GlyUnits.glToMgdl(rawGly);   // converti en mg/dL pour tous les calculs
     } else {
-      g = Util.toNumber(rawGly);        // mg/dL direct
+      g = rawNum;                        // mg/dL direct
     }
 
     // Mise à jour visuelle de l'unité détectée
@@ -2318,9 +2493,71 @@
     if (el.glyUnitLabel)  el.glyUnitLabel.textContent  = unitLabel;
     if (el.pillGlyUnit)   el.pillGlyUnit.textContent   = unitLabel;
 
-    const glyInvalid = !rangeOk(g, GLY_MIN, GLY_MAX);
+    // ═══════════════════════════════════════════════════════════════════
+    // SÉCURITÉ P0 — Détection confusion unités mg/dL ↔ g/L
+    // ═══════════════════════════════════════════════════════════════════
+    let glyErrMsg = '⚠️ Glycémie hors plage (50–500 mg/dL ou 0.5–6 g/L).';
+    let glyHardBlock = false;
+
+    if (Number.isFinite(rawNum) && rawNum > 0) {
+      // CAS 1 : Saisie > 600 mg/dL → suspicion de saisie en g/L (ex: 180 g/L)
+      // Critère audit : saisie > 600 mg/dL → warning fort
+      if (detectedUnit !== 'gl' && rawNum > 600) {
+        const asGl = GlyUnits.mgdlToGl(rawNum);
+        glyErrMsg = `🚨 ${rawNum} mg/dL dépasse 600 — saisi en g/L ? (${rawNum} g/L = ${Math.round(rawNum * 100)} mg/dL). Vérifiez votre unité.`;
+        // Déclenchement popup unique par valeur (évite le spam)
+        if (Touched.gly && rawNum !== _lastGlyWarnValue) {
+          _lastGlyWarnValue = rawNum;
+          _showGlyUnitWarning(rawNum, 'mgdl-overflow');
+        }
+      }
+
+      // CAS 2 : Saisie détectée g/L > 10 g/L → BLOCAGE (= 1000 mg/dL, impossible)
+      // Critère audit : saisie > 10 g/L → blocage
+      // Note : detectUnit retourne 'gl' pour 0.2–5.9, 'unknown' au-delà → on couvre les deux
+      if ((detectedUnit === 'gl' && rawNum > 10) || (detectedUnit === 'unknown' && rawNum > 10 && rawNum < GLY_MIN)) {
+        glyErrMsg = `🚫 ${rawNum} g/L est impossible (max physiologique ≈ 6 g/L = 600 mg/dL). Vérifiez votre saisie.`;
+        glyHardBlock = true;
+        g = NaN; // Force invalide — bloque le calcul
+      }
+
+      // CAS 3 : Valeur dans zone ambiguë (100–600) alors que l'utilisateur pourrait
+      // avoir saisi en g/L sans le savoir (ex: "1.8" détecté g/L → 180 mg/dL, OK mais
+      // on confirme visuellement pour rassurer)
+    }
+    // ═══════════════════════════════════════════════════════════════════
+
+    const glyInvalid = glyHardBlock || !rangeOk(g, GLY_MIN, GLY_MAX);
     const carbInvalid = !rangeOk(c, CARB_MIN, CARB_MAX);
 
+    // ═══════════════════════════════════════════════════════════════════
+    // SÉCURITÉ P1 — Glycémie aberrante (Issue 4)
+    // Badge rouge "valeur inhabituelle" pour glycémies sévères mais acceptées
+    // ═══════════════════════════════════════════════════════════════════
+    if (el.glyDangerBadge) {
+      const gVal = Number.isFinite(g) ? g : rawNum; // valeur en mg/dL pour les seuils
+      if (!glyInvalid && Number.isFinite(gVal)) {
+        if (gVal >= 501) {
+          // Seuil médical DKA/HHS : > 500 mg/dL → urgence métabolique potentielle
+          el.glyDangerBadge.textContent = '🚨 Valeur critique (> 500 mg/dL) — Consultez immédiatement votre équipe soignante avant toute injection.';
+          el.glyDangerBadge.style.cssText = 'display:block; margin-top:6px; padding:8px 12px; border-radius:10px; font-size:13px; font-weight:800; line-height:1.4; background:rgba(239,68,68,0.18); border:1.5px solid rgba(239,68,68,0.55); color:inherit;';
+        } else if (gVal >= 400) {
+          // Seuil intermédiaire : hyperglycémie sévère
+          el.glyDangerBadge.textContent = '⚠️ Hyperglycémie sévère (≥ 400 mg/dL) — Vérifiez votre glycémie avant injection.';
+          el.glyDangerBadge.style.cssText = 'display:block; margin-top:6px; padding:8px 12px; border-radius:10px; font-size:13px; font-weight:800; line-height:1.4; background:rgba(251,113,133,0.14); border:1.5px solid rgba(251,113,133,0.45); color:inherit;';
+        } else {
+          el.glyDangerBadge.style.display = 'none';
+          el.glyDangerBadge.textContent = '';
+        }
+      } else {
+        el.glyDangerBadge.style.display = 'none';
+        el.glyDangerBadge.textContent = '';
+      }
+    }
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Mise à jour dynamique du message d'erreur glycémie
+    if (el.glyFastErr) el.glyFastErr.textContent = glyErrMsg;
     setFieldError(el.glyFast, el.glyFastErr, Touched.gly && glyInvalid);
     setFieldError(el.carbFast, el.carbFastErr, Touched.carbs && carbInvalid);
 
@@ -2519,6 +2756,27 @@
     }
   }
 
+  // ── P2 Issue 7 — Verrou wizard sur le champ glucides ───────────────
+  // Exposées sur window pour être accessibles depuis simple-mode-wizard.js
+  // et food-search-ui.js (scripts externes, hors closure)
+  window.lockCarbField = function(sourceLabel) {
+    const field = document.getElementById('carbFast');
+    const badge = document.getElementById('carbWizardLockBadge');
+    if (!field) return;
+    field.setAttribute('readonly', 'true');
+    if (badge) badge.style.display = 'flex';
+  };
+  window.unlockCarbField = function() {
+    const field = document.getElementById('carbFast');
+    const badge = document.getElementById('carbWizardLockBadge');
+    if (!field) return;
+    field.removeAttribute('readonly');
+    field.classList.remove('input-required-empty');
+    if (badge) badge.style.display = 'none';
+    field.focus();
+  };
+  // ────────────────────────────────────────────────────────────────────
+
   function render(){
     const p = readCommonParams();
     renderPills(p);
@@ -2530,7 +2788,14 @@
       if(result.isHypo){
         setStatus("bad", "⛔ Glycémie basse — 0 U conseillé. Resucrage recommandé, ne pas injecter.");
       } else {
-        setStatus("ok", "Calcul du Bolus réalisé");
+        // P1 Issue 4 — Alerte physiologique glycémie aberrante
+        if (Number.isFinite(result.gly) && result.gly >= 501) {
+          setStatus("bad", "🚨 Glycémie critique (> 500 mg/dL) — Consultez immédiatement votre équipe soignante. Bolus calculé à titre indicatif uniquement.");
+        } else if (Number.isFinite(result.gly) && result.gly >= 400) {
+          setStatus("warn", "⚠️ Hyperglycémie sévère (≥ 400 mg/dL) — Vérifiez votre glycémie avant toute injection.");
+        } else {
+          setStatus("ok", "Calcul du Bolus réalisé");
+        }
         if(p.rapide > p.basale){
           setStatus("warn", "⚠️ Insuline rapide > basale : vérifie que c'est cohérent.");
         }
@@ -2583,9 +2848,37 @@
     el.glyFast?.addEventListener("blur",  () => { mark("gly"); render(); }, { passive:true });
     el.glyFast?.addEventListener("change",() => { mark("gly"); render(); }, { passive:true });
 
+    // ── P2 Issue 8 — Normalisation virgule → point en temps réel ────────
+    // input[type="text"] laisse JS lire la valeur brute incluant la virgule.
+    // On remplace immédiatement avant que toNumber() ne soit appelé.
+    const DECIMAL_FIELDS = ['glyFast', 'carbFast', 'basale', 'rapide', 'objectif'];
+    DECIMAL_FIELDS.forEach(id => {
+      const field = document.getElementById(id);
+      if (!field) return;
+      field.addEventListener('input', () => {
+        const raw = field.value;
+        const normalized = raw.replace(/,/g, '.');
+        if (normalized !== raw) {
+          // Préserver la position du curseur
+          const pos = field.selectionStart;
+          field.value = normalized;
+          // Repositionner le curseur (la virgule et le point ont la même largeur)
+          try { field.setSelectionRange(pos, pos); } catch(e) {}
+        }
+      }, { passive: true });
+    });
+    // ─────────────────────────────────────────────────────────────────────
+
     el.carbFast?.addEventListener("input", () => { mark("carbs"); render(); }, { passive:true });
     el.carbFast?.addEventListener("blur",  () => { mark("carbs"); render(); }, { passive:true });
     el.carbFast?.addEventListener("change",() => { mark("carbs"); render(); }, { passive:true });
+
+    // P2 Issue 7 — Bouton déverrouillage manuel du champ glucides
+    document.getElementById("carbUnlockBtn")?.addEventListener("click", () => {
+      window.unlockCarbField();
+      mark("carbs");
+      render();
+    });
 
     // NOUVEAU : Effacer le message wizard si modification manuelle des glucides
     el.carbFast?.addEventListener("input", function(){

@@ -197,18 +197,37 @@ class BolusOptimizer {
   /**
    * Formate le résultat pour l'affichage.
    * Les arrondis d'affichage sont centralisés ici (pas dans optimizeBolus).
+   *
+   * P1 Issue 5 — Arrondi fractionnement cohérent :
+   *   before est arrondi en premier, after = total_arrondi - before_arrondi
+   *   → garantit before + after = bolus_optimized_display à ±0.0 par construction.
    */
   formatResult(result, step = 0.1) {
-    const round = (n) => (Math.round(n / step) * step).toFixed(1);
+    const round    = (n) => (Math.round(n / step) * step).toFixed(1);
+    const toNum    = (s) => Math.round(parseFloat(s) * 1000) / 1000; // évite les erreurs flottantes
+
+    const bolus_optimized_display = round(result.bolus_optimized);
+
+    let split_doses_display = null;
+    if (result.split_doses) {
+      // Arrondir before en premier, after = total - before (somme garantie exacte)
+      const beforeRaw    = result.bolus_optimized * (result.strategy.split.before / 100);
+      const beforeStr    = round(beforeRaw);
+      const afterNum     = toNum(bolus_optimized_display) - toNum(beforeStr);
+      const afterStr     = afterNum.toFixed(1);
+
+      split_doses_display = {
+        before:       beforeStr,
+        after:        afterStr,
+        timing_after: result.split_doses.timing_after,
+      };
+    }
+
     return {
       ...result,
       bolus_standard_display:  round(result.bolus_standard),
-      bolus_optimized_display: round(result.bolus_optimized),
-      split_doses_display: result.split_doses ? {
-        before:       round(result.split_doses.before),
-        after:        round(result.split_doses.after),
-        timing_after: result.split_doses.timing_after
-      } : null,
+      bolus_optimized_display,
+      split_doses_display,
     };
   }
 
