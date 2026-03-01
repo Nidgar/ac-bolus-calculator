@@ -549,21 +549,24 @@ class SimpleModeWizard {
           <div class="wizard-message" data-wizard-preserved="true" style="display:flex;width:100%;gap:16px;align-items:flex-start;">
             <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;">
               <span style="font-size:32px;" aria-hidden="true">✅</span>
-              <span style="font-weight:900;font-size:14px;white-space:nowrap;">Repas validé</span>
+              <span style="font-weight:900;font-size:14px;white-space:nowrap;">Repas estimé</span>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
               <div style="font-weight:900;font-size:16px;">🍬 ${this.totalGlucides}g de glucides • 📊 IG moyen: ${this.totalIG}</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted,#94a3b8);line-height:1.4;">
+                ℹ️ Glucides approximatifs. Vérifie si besoin avec un adulte (portion réelle / étiquette).
+              </div>
               ${isSplit ? `
               <button
                 id="applyIGOptimBtn"
                 style="width:100%;padding:10px 14px;background:rgba(251,191,36,0.18);color:inherit;border:1.5px solid rgba(251,191,36,0.5);border-radius:10px;cursor:pointer;font-weight:800;font-size:14px;text-align:center;"
                 aria-expanded="false"
                 aria-controls="igOptimContentWizard"
-              >${conseil.icon} Voir recommandation timing (IG élevé)</button>
+              >${conseil.icon} Voir le repère bolus (IG élevé)</button>
               <div id="igOptimContentWizard" hidden style="display:flex;flex-direction:column;gap:8px;">
                 <div style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.5;">
-                  📚 <strong>Recommandation éducative — non médicale.</strong><br>
-                  Consultez votre équipe soignante avant tout changement d'injection.
+                  📋 <strong>Information éducative — non médicale.</strong><br>
+                  Applique uniquement ce qui est prévu dans ton plan. Valide avec un adulte ou ton équipe soignante avant tout changement.
                 </div>
                 <div style="padding:10px 12px;background:rgba(255,255,255,0.1);border-radius:8px;font-weight:800;font-size:14px;">
                   ${conseil.icon} ${conseil.message}
@@ -588,7 +591,7 @@ class SimpleModeWizard {
             applyBtn.setAttribute('aria-expanded', String(!isOpen));
             if (content) content.hidden = isOpen;
             if (!isOpen) {
-              applyBtn.textContent = `${conseil.icon} Recommandation timing affichée ✓`;
+              applyBtn.textContent = `${conseil.icon} Repère bolus affiché ✓`;
               applyBtn.style.textAlign = 'center';
               applyBtn.style.background = 'rgba(52,211,153,0.15)';
               applyBtn.style.borderColor = 'rgba(52,211,153,0.5)';

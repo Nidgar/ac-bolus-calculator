@@ -1,7 +1,7 @@
 {
   "name": "AC Bolus - Calculateur de Bolus",
   "short_name": "AC Bolus",
-  "description": "Calculateur de bolus pour la gestion du diabète",
+  "description": "Outil éducatif pour comprendre le calcul bolus (glucides / correction). Ne remplace pas un avis médical ni un protocole.",
   "start_url": "./calculateur-bolus-final.html",
   "display": "standalone",
   "background_color": "#0b1220",
@@ -48,7 +48,7 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["health", "medical", "lifestyle"],
+  "categories": ["health", "education", "lifestyle"],
   "lang": "fr-FR",
   "dir": "ltr"
 }

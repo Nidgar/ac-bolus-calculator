@@ -82,44 +82,53 @@ class BolusOptimizer {
    * @param {number} igMean
    * @returns {{ strategy: string, split: object, timing: string, message: string, icon: string }}
    */
-  determineBolusStrategy(igMean) {
-    if (!igMean || igMean < 0) {
-      return {
-        strategy: 'standard',
-        split: { before: 100, after: 0 },
-        timing: 'normal',
-        message: 'Bolus standard : 10-15 min avant le repas',
-        icon: '🟢'
-      };
-    }
-    if (igMean < this.config.ig_fast_threshold) {
+  determineBolusStrategy(igMean, cgTotal = 0) {
+    // P0 Issue 2 — 9 cas IG × CG : chiffres éducatifs + garde-fou "selon ton plan"
+
+    // IG bas (< 55)
+    if (!igMean || igMean < this.config.ig_fast_threshold) {
+      let message;
+      if      (cgTotal < 10) message = 'Bolus : 15 min avant — absorption lente, CG faible. Selon ton plan habituel.';
+      else if (cgTotal < 20) message = 'Bolus : 10-15 min avant — selon ton plan habituel.';
+      else                   message = 'Bolus : 10-15 min avant — CG élevée, absorption prolongée possible. Selon ton plan.';
       return {
         strategy: 'normal',
         split: { before: 100, after: 0 },
         timing: 'normal',
-        message: 'Bolus normal : 10-15 min avant le repas',
+        message,
         icon: '🟢',
-        detail: 'IG bas — absorption lente, pas de risque de pic'
+        detail: 'IG bas — absorption lente'
       };
     }
+
+    // IG moyen (55–69)
     if (igMean < this.config.ig_split_threshold) {
+      let message;
+      if      (cgTotal < 10) message = 'Bolus : au moment du repas (0-5 min) — CG faible, impact modéré. Selon ton protocole.';
+      else if (cgTotal < 20) message = 'Bolus : souvent proche du repas (5-10 min) — selon ton protocole.';
+      else                   message = 'Bolus : 10-15 min avant — CG élevée sur IG moyen. Selon ton protocole.';
       return {
         strategy: 'fast',
         split: { before: 100, after: 0 },
         timing: 'fast',
-        message: 'Bolus rapide : 5-10 min avant le repas',
+        message,
         icon: '🟡',
         detail: 'IG moyen — absorption modérée'
       };
     }
+
+    // IG élevé (≥ 70) : durée fractionnement modulée par CG
+    let duree;
+    if      (cgTotal < 20) duree = '~1h';
+    else if (cgTotal < 40) duree = '1h à 1h30';
+    else                   duree = '1h30 à 2h';
     return {
       strategy: 'split',
       split: { before: 60, after: 40 },
       timing: 'split',
-      message: 'Bolus fractionné : 60% avant, 40% après 30-45 min',
+      message: `Bolus IG élevé : certains protocoles fractionnent (${duree} entre les deux parties). Uniquement si prévu dans ton plan — valide avec un adulte/soignant.`,
       icon: '🟠',
-      detail: 'IG élevé — risque de pic rapide puis prolongé',
-      warning: '⚠️ Surveillance glycémie recommandée à +30min et +2h'
+      detail: 'IG élevé — absorption rapide et prolongée'
     };
   }
 
@@ -142,14 +151,15 @@ class BolusOptimizer {
     const cg_factor       = this.calculateCGFactor(cg_total);
     const combined_factor = ig_factor * cg_factor;
     const bolus_optimized = bolus_standard * combined_factor;
-    const strategy        = this.determineBolusStrategy(ig_mean);
+    // P0 Issue 2 — passer cg_total pour les 9 cas IG × CG
+    const strategy        = this.determineBolusStrategy(ig_mean, cg_total);
 
     let split_doses = null;
     if (strategy.strategy === 'split') {
       split_doses = {
         before:       bolus_optimized * (strategy.split.before / 100),
         after:        bolus_optimized * (strategy.split.after  / 100),
-        timing_after: '30-45 minutes'
+        timing_after: '30-45 minutes' // donnée structurelle interne, non affichée directement
       };
     }
 
@@ -180,17 +190,20 @@ class BolusOptimizer {
   }
 
   classifyCG(cg) {
-    if (cg < 10) return { label: 'Basse',  color: 'green',  icon: '🟢' };
+    if (cg < 10) return { label: 'Basse',   color: 'green',  icon: '🟢' };
     if (cg < 20) return { label: 'Moyenne', color: 'yellow', icon: '🟡' };
-    return              { label: 'Élevée', color: 'orange', icon: '🟠' };
+    return              { label: 'Élevée',  color: 'orange', icon: '🟠' };
   }
 
   generateRecommendations({ ig_mean, cg_total, carbs_g, strategy }) {
     const recs = [];
-    recs.push({ type: 'timing',   icon: '⏰', text: strategy.message });
-    if (ig_mean  >= 70)  recs.push({ type: 'monitoring', icon: '📊', text: 'Surveiller la glycémie à +30min, +1h et +2h' });
-    if (cg_total >= 20)  recs.push({ type: 'caution',    icon: '⚠️', text: 'CG élevée : risque de pic glycémique prolongé' });
-    if (carbs_g  >  60)  recs.push({ type: 'activity',   icon: '🚶', text: 'Repas copieux : activité physique légère recommandée' });
+    // Timing : message non prescriptif (Issue 2)
+    recs.push({ type: 'timing', icon: strategy.icon, text: strategy.message });
+    // Infos contextuelles sans impératif clinique
+    if (ig_mean  >= 70) recs.push({ type: 'info', icon: '📋', text: 'IG élevé : voir les consignes de ton plan avec ton équipe soignante.' });
+    if (cg_total >= 20) recs.push({ type: 'info', icon: '📋', text: 'CG élevée : à prendre en compte selon ton protocole habituel.' });
+    // P1 Issue 4 — Activité physique : repère non prescriptif + garde-fou sécurité
+    if (carbs_g  >  60) recs.push({ type: 'activity', icon: '🚶', text: 'Repère : l\'activité peut influencer la glycémie. À faire uniquement si prévu dans ton plan et en sécurité (surveillance + adulte).' });
     return recs;
   }
 

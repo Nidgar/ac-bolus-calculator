@@ -397,8 +397,8 @@ class FoodSearchUI {
           </button>
           <div id="igTimingContent" class="igTimingContent" hidden>
             <div class="igTimingDisclaimer">
-              📚 <strong>Recommandation éducative — non médicale.</strong><br>
-              Consultez votre équipe soignante avant tout changement de schéma d'injection.
+              📋 <strong>Information éducative — non médicale.</strong><br>
+              Applique uniquement ce qui est prévu dans ton plan. Valide avec un adulte ou ton équipe soignante avant tout changement.
             </div>
             <div class="timingSuggestion">
               ${timing.icon} ${timing.message}
@@ -450,11 +450,14 @@ class FoodSearchUI {
         <div style="display: flex; width: 100%; gap: 16px; align-items: flex-start;">
           <div style="flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;">
             <span style="font-size: 32px;" aria-hidden="true">✅</span>
-            <span style="font-weight: 900; font-size: 14px; white-space: nowrap;">Repas validé</span>
+            <span style="font-weight: 900; font-size: 14px; white-space: nowrap;">Repas estimé</span>
           </div>
           <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
             <div style="font-weight: 900; font-size: 16px;">
               🍞 ${fmtVal.carbs_g}g de glucides • 📊 IG moyen: ${fmtVal.ig_mean}
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--muted, #94a3b8); line-height: 1.4;">
+              ℹ️ Glucides approximatifs. Vérifie si besoin avec un adulte (portion réelle / étiquette).
             </div>
             ${isSplit ? `
             <button
@@ -463,13 +466,12 @@ class FoodSearchUI {
               aria-expanded="false"
               aria-controls="igOptimContent"
             >
-              ${timing.icon} Voir recommandation timing (IG élevé)
+              ${timing.icon} Voir le repère bolus (IG élevé)
             </button>
             <div id="igOptimContent" hidden style="padding:10px 12px; background:rgba(255,255,255,0.08); border-radius:8px; font-size:13px;">
               <div style="background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.4); border-radius:8px; padding:8px 10px; margin-bottom:8px; font-size:12px; line-height:1.5;">
-                📚 <strong>Recommandation éducative — non médicale.</strong><br>
-                Ce conseil est à titre informatif uniquement.<br>
-                Consultez votre équipe soignante avant tout changement.
+                📋 <strong>Information éducative — non médicale.</strong><br>
+                Applique uniquement ce qui est prévu dans ton plan. Valide avec un adulte ou ton équipe soignante avant tout changement.
               </div>
               <div style="font-weight: 800;">${timing.icon} ${timing.message}</div>
             </div>
@@ -492,7 +494,7 @@ class FoodSearchUI {
           applyBtn.setAttribute('aria-expanded', String(!isOpen));
           if (content) content.hidden = isOpen;
           if (!isOpen) {
-            applyBtn.textContent = `${timing.icon} Recommandation timing affichée ✓`;
+            applyBtn.textContent = `${timing.icon} Repère bolus affiché ✓`;
             applyBtn.style.textAlign = 'center';
             applyBtn.style.background = 'rgba(52,211,153,0.15)';
             applyBtn.style.borderColor = 'rgba(52,211,153,0.5)';
@@ -501,7 +503,7 @@ class FoodSearchUI {
       }
     }
 
-    console.log(`✅ Repas validé : ${MealMetrics.format(meal).carbs_g}g glucides, IG ${meal.ig_mean}`);
+    console.log(`✅ Repas estimé : ${MealMetrics.format(meal).carbs_g}g glucides, IG ${meal.ig_mean}`);
   }
 
   /**

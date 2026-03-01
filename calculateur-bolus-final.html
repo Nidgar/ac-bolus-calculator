@@ -14,7 +14,7 @@
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1220" />
   
   <!-- Description pour PWA -->
-  <meta name="description" content="Calculateur de bolus intelligent pour la gestion du diabète" />
+  <meta name="description" content="Outil éducatif pour comprendre le calcul bolus (glucides / correction). Ne remplace pas un avis médical ni un protocole." />
   
   <!-- Apple Touch Icons (iOS) -->
   <link rel="apple-touch-icon" href="icon-192.png" />
@@ -286,6 +286,21 @@
           0 0 40px rgba(37,99,235,0.22);
       }
     }
+
+    @keyframes pulseNeonRed {
+      0%, 100% {
+        box-shadow:
+          0 0 0 2px rgba(251,113,133,0.35),
+          0 0 18px rgba(251,113,133,0.45),
+          0 0 32px rgba(220,38,38,0.25);
+      }
+      50% {
+        box-shadow:
+          0 0 0 3px rgba(251,113,133,0.55),
+          0 0 28px rgba(251,113,133,0.65),
+          0 0 48px rgba(220,38,38,0.40);
+      }
+    }
     
     .alertBanner{
       margin-top: 10px;
@@ -418,6 +433,44 @@
       opacity: 0.75;
       min-height: 14px;
     }
+    /* P0 Issue 6 — Bloc hypo dédié dans le résultat */
+    #hypoBlock{
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 2px solid rgba(251,113,133,0.55);
+      background: rgba(220,38,38,0.20);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.5;
+      text-align: left;
+      color: var(--text);
+    }
+    #hypoBlock.show{
+      display: block;
+      animation: pulseNeonRed 2s ease-in-out infinite;
+    }
+    #hypoBlock .hypoTitle{
+      font-size: 14px;
+      font-weight: 950;
+      margin-bottom: 4px;
+    }
+    /* P1 Issue 3 — Disclaimer éducatif résultat */
+    #resultDisclaimer{
+      display: none;
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(110,231,255,0.30);
+      background: rgba(110,231,255,0.08);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      line-height: 1.4;
+      text-align: center;
+    }
+    #resultDisclaimer.show{ display: block; }
 
     .miniBadges{
       display:flex;
@@ -428,10 +481,11 @@
     }
     .badge{
       display:inline-flex;
+      flex-direction: row;
       align-items:center;
       gap: 6px;
       padding: 8px 10px;
-      border-radius: 999px;
+      border-radius: 14px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.04);
       color: var(--muted);
@@ -441,6 +495,16 @@
     }
     :root[data-theme="clair"] .badge{ background: rgba(0,0,0,0.03); }
     .badge strong{ color: var(--text); }
+    /* P0 Issue 5 — Mini-explication inline ICR/FSI */
+    .badgeHint{
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      opacity: 0.75;
+      white-space: nowrap;
+      border-left: 1px solid var(--border);
+      padding-left: 6px;
+    }
 
     .status{
       margin-top: 12px;
@@ -1675,7 +1739,7 @@
     <img class="logo" src="favicon-96.png" alt="Logo AC BOLUS">
     <div class="titleBlock">
       <h1>AC Bolus</h1>
-      <div class="sub">Calculateur de Bolus</div>
+      <div class="sub">Outil éducatif — calcul bolus</div>
     </div>
   </div>
 
@@ -1733,7 +1797,7 @@
             &nbsp;·&nbsp;
             <strong>ICR</strong> = 500 ÷ DTQ <em>(g de glucides couverts par 1 U)</em>
             &nbsp;·&nbsp;
-            <strong>FSI</strong> = 1800 ÷ DTQ <em>(mg/dL abaissé par 1 U)</em>
+            <strong>FSI</strong> = 1800 ÷ DTQ <em>(<span id="fsiDefUnit">mg/dL</span> abaissé par 1 U)</em>
           </p>
 
           <div class="row2" style="margin-top:12px">
@@ -1757,7 +1821,7 @@
           <div class="metrics" aria-label="Valeurs calculées">
             <div class="metric"><div class="k">DTQ (U/j)</div><div id="dtq" class="v">—</div></div>
             <div class="metric"><div class="k">ICR — 500÷DTQ (g/U)</div><div id="icr" class="v">—</div></div>
-            <div class="metric"><div class="k">FSI — 1800÷DTQ (mg/dL/U)</div><div id="fsi" class="v">—</div></div>
+            <div class="metric"><div class="k">FSI — 1800÷DTQ (<span id="fsiMetricUnit">mg/dL</span>/U)</div><div id="fsi" class="v">—</div></div>
           </div>
           <div id="fsiWarn" class="fieldError" role="alert" aria-live="assertive" style="display:none; margin-top:8px;"></div>
         </details>
@@ -1765,7 +1829,7 @@
         <details>
           <summary>⚠️ Note de sécurité</summary>
           <p>
-            Cet outil est informatif. Ne remplace pas l'avis médical. Vérifie toujours les unités et les valeurs avant injection.
+            Outil éducatif pour comprendre le calcul (glucides / correction). Ne remplace pas un avis médical ni un protocole. Vérifie toujours les unités et les valeurs avant injection.
           </p>
         </details>
       </div>
@@ -1823,14 +1887,29 @@
           <div class="res total">
             <div class="k">Bolus conseillé</div><div id="totalFast" class="v">—</div>
             <div id="totalDetail" class="total-detail" aria-label="Détail du calcul d'arrondi"></div>
+            <!-- P0 Issue 6 — Bloc hypo dédié -->
+            <div id="hypoBlock" role="alert" aria-live="assertive">
+              <div class="hypoTitle">⛔ 0 U — Glycémie Basse | Pas de Bolus | Resucrage recommandé</div>
+              Suis ton plan hypoglycémie et demande à un adulte/soignant.
+            </div>
+            <!-- P1 Issue 3 — Disclaimer éducatif -->
+            <div id="resultDisclaimer" role="note" aria-live="polite">
+              ℹ️ Estimation pour apprendre. Fais valider par un adulte/soignant.
+            </div>
           </div>
         </div>
       </div>
 
       <!-- RATIOS (Seulement en mode initié) -->
       <div id="ratioBadgesFast" class="miniBadges hide-in-simple" aria-label="Ratios utilisés (rapide)">
-        <span class="badge">ICR : <strong id="icrBadgeFast">—</strong> g/U</span>
-        <span class="badge">FSI : <strong id="fsiBadgeFast">—</strong> mg/dL/U</span>
+        <span class="badge" title="1 unité d'insuline couvre X grammes de glucides">
+          ICR : <strong id="icrBadgeFast">—</strong> g/U
+          <span class="badgeHint">1U → <strong id="icrBadgeHintVal">—</strong> g glucides</span>
+        </span>
+        <span class="badge" title="1 unité d'insuline abaisse la glycémie de X">
+          FSI : <strong id="fsiBadgeFast">—</strong> <span id="fsiBadgeUnit">mg/dL</span>/U
+          <span class="badgeHint">1U ↓ glycémie de <strong id="fsiBadgeHintVal">—</strong> <span id="fsiBadgeHintUnit">mg/dL</span></span>
+        </span>
       </div>
 
       <!-- MESSAGE STATUS : Résultat de la composition du repas -->
@@ -2233,6 +2312,13 @@
     fsiWarn: $("fsiWarn"),
     icrBadgeFast: $("icrBadgeFast"),
     fsiBadgeFast: $("fsiBadgeFast"),
+    // P0 Issue 5 — Unités FSI/ICR dynamiques
+    icrBadgeHintVal: $("icrBadgeHintVal"),
+    fsiBadgeUnit:    $("fsiBadgeUnit"),
+    fsiBadgeHintVal: $("fsiBadgeHintVal"),
+    fsiBadgeHintUnit:$("fsiBadgeHintUnit"),
+    fsiDefUnit:      $("fsiDefUnit"),
+    fsiMetricUnit:   $("fsiMetricUnit"),
 
     // results
     corrFast: $("corrFast"),
@@ -2241,7 +2327,10 @@
     totalDetail: $("totalDetail"),
 
     statusFast: $("statusFast"),
-    status: $("status")
+    status: $("status"),
+    // P0 Issue 6 — Bloc hypo dédié + P1 Issue 3 — Disclaimer
+    hypoBlock:        $("hypoBlock"),
+    resultDisclaimer: $("resultDisclaimer")
   };
 
   // -------------------- UI State --------------------
@@ -2716,11 +2805,26 @@
     const fsiTxt = Number.isFinite(params?.fsi) ? params.fsi.toFixed(1) : "—";
     if(el.icrBadgeFast) el.icrBadgeFast.textContent = icrTxt;
     if(el.fsiBadgeFast) el.fsiBadgeFast.textContent = fsiTxt;
+    if(el.icrBadgeHintVal) el.icrBadgeHintVal.textContent = icrTxt;
+
+    // P0 Issue 5 — Unités FSI dynamiques selon l'unité glycémie détectée
+    const rawGlyForUnit = el.glyFast?.value ?? '';
+    const unitForFSI = GlyUnits.detectUnit(rawGlyForUnit) === 'gl' ? 'g/L' : 'mg/dL';
+    const fsiDisplay = (unitForFSI === 'g/L' && Number.isFinite(params?.fsi))
+      ? (params.fsi / 100).toFixed(3)
+      : fsiTxt;
+    if(el.fsiBadgeUnit)     el.fsiBadgeUnit.textContent     = unitForFSI;
+    if(el.fsiBadgeHintVal)  el.fsiBadgeHintVal.textContent  = fsiDisplay;
+    if(el.fsiBadgeHintUnit) el.fsiBadgeHintUnit.textContent = unitForFSI;
+    if(el.fsiDefUnit)       el.fsiDefUnit.textContent       = unitForFSI;
+    if(el.fsiMetricUnit)    el.fsiMetricUnit.textContent    = unitForFSI;
   }
 
   function renderResults(r){
     const fmt = (n) => Number.isFinite(n) ? n.toFixed(2) : "—";
     const fmt1 = (n) => Number.isFinite(n) ? n.toFixed(1) : "—";
+    const hypoBlock  = el.hypoBlock;
+    const disclaimer = el.resultDisclaimer;
 
     const showDetails = document.body.classList.contains('show-bolus-details');
 
@@ -2729,6 +2833,10 @@
       if(el.corrFast)    el.corrFast.textContent    = "—";
       if(el.repasFast)   el.repasFast.textContent   = "—";
       if(el.totalDetail) el.totalDetail.textContent = "";
+      // P0 Issue 6 — Hypo block
+      if(hypoBlock)  hypoBlock.classList.toggle("show", !!(r?.isHypo));
+      // P1 Issue 3 — Disclaimer visible sauf en hypo (hypoBlock le remplace)
+      if(disclaimer) disclaimer.classList.toggle("show", !!(r && !r.isHypo));
       return;
     }
 
@@ -2737,6 +2845,8 @@
       if(el.repasFast)   el.repasFast.textContent   = "—";
       if(el.totalFast)   el.totalFast.textContent   = "—";
       if(el.totalDetail) el.totalDetail.textContent = "";
+      if(hypoBlock)  hypoBlock.classList.remove("show");
+      if(disclaimer) disclaimer.classList.remove("show");
       return;
     }
 
@@ -2744,15 +2854,23 @@
     if(el.repasFast) el.repasFast.textContent = fmt(r.repas);
     if(el.totalFast) el.totalFast.textContent = fmt1(r.totalConseille);
 
-    // Ligne d'arrondi : montre le total exact → arrondi au pas
-    // Exemples : "= 6.36 → arrondi 6.5 U (pas 0.5)"  /  "= 6.00 → exact"
+    // P0 Issue 6 — Hypo block : visible si total négatif, masque totalDetail
+    if(hypoBlock)  hypoBlock.classList.toggle("show", !!r.isHypo);
+    // P1 Issue 3 — Disclaimer : visible sauf en hypo
+    if(disclaimer) disclaimer.classList.toggle("show", !r.isHypo);
+
+    // Ligne d'arrondi : masquée en cas d'hypo (hypoBlock la remplace)
     if(el.totalDetail && Number.isFinite(r.total)){
-      const exactStr  = r.total.toFixed(2);
-      const stepStr   = String(r.step);
-      const isExact   = Math.abs(r.total - r.totalConseille) < 0.001;
-      el.totalDetail.textContent = isExact
-        ? `= ${exactStr} U (exact)`
-        : `= ${exactStr} → arrondi au pas ${stepStr} U`;
+      if(r.isHypo){
+        el.totalDetail.textContent = "";
+      } else {
+        const exactStr  = r.total.toFixed(2);
+        const stepStr   = String(r.step);
+        const isExact   = Math.abs(r.total - r.totalConseille) < 0.001;
+        el.totalDetail.textContent = isExact
+          ? `= ${exactStr} U (exact)`
+          : `= ${exactStr} → arrondi au pas ${stepStr} U`;
+      }
     }
   }
 
