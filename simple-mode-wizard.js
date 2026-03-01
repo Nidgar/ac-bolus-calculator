@@ -1,8 +1,88 @@
 /**
- * SIMPLE MODE WIZARD v2.1 - Logique de composition guidée de repas
+ * SelectionCounter — Compteur de popularité personnelle des aliments
+ * ─────────────────────────────────────────────────────────────────────
+ * Principe : chaque sélection d'un aliment incrémente son compteur.
+ * Les listes du wizard sont triées par popularité décroissante.
+ * Stockage : localStorage (clé 'acbolus_food_counts') — persiste entre sessions.
+ * Isolation totale : aucun impact sur SimpleModeData ni sur les calculs.
+ */
+const SelectionCounter = {
+  _STORAGE_KEY: 'acbolus_food_counts',
+  _cache: null,
+
+  /** Charge (ou recharge) les compteurs depuis localStorage. */
+  _load() {
+    if (this._cache) return this._cache;
+    try {
+      const raw = localStorage.getItem(this._STORAGE_KEY);
+      this._cache = raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      this._cache = {};
+    }
+    return this._cache;
+  },
+
+  /** Persiste les compteurs dans localStorage. */
+  _save() {
+    try {
+      localStorage.setItem(this._STORAGE_KEY, JSON.stringify(this._cache));
+    } catch (e) {
+      console.warn('⚠️ SelectionCounter : impossible de sauvegarder', e);
+    }
+  },
+
+  /**
+   * Incrémente le compteur d'un aliment.
+   * À appeler uniquement lors d'une sélection (pas d'une désélection).
+   * @param {string} alimentId
+   */
+  increment(alimentId) {
+    const counts = this._load();
+    counts[alimentId] = (counts[alimentId] || 0) + 1;
+    this._save();
+  },
+
+  /**
+   * Retourne le compteur d'un aliment (0 si jamais sélectionné).
+   * @param {string} alimentId
+   * @returns {number}
+   */
+  get(alimentId) {
+    return this._load()[alimentId] || 0;
+  },
+
+  /**
+   * Trie un tableau d'aliments par popularité décroissante.
+   * Les aliments à égalité conservent leur ordre d'origine (tri stable).
+   * @param {Array} aliments
+   * @returns {Array} Nouveau tableau trié (l'original n'est pas muté)
+   */
+  sort(aliments) {
+    const counts = this._load();
+    return [...aliments].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
+  },
+
+  /** Remet tous les compteurs à zéro (utile pour les tests). */
+  reset() {
+    this._cache = {};
+    try { localStorage.removeItem(this._STORAGE_KEY); } catch (_) {}
+    console.log('🔄 SelectionCounter : compteurs remis à zéro');
+  }
+};
+
+// Exposition globale (accès console pour debug/reset)
+if (typeof window !== 'undefined') window.SelectionCounter = SelectionCounter;
+
+/**
+ * SIMPLE MODE WIZARD v2.2 - Logique de composition guidée de repas
  *
  * IMPORTANT : N'instancie PLUS SimpleModeWizard automatiquement.
  * L'initialisation est déléguée à app.js (bootstrap unique).
+ *
+ * NOUVEAUTÉ v2.2 :
+ *   - ✅ SelectionCounter : popularité personnelle des aliments (localStorage)
+ *   - ✅ Listes triées par fréquence d'utilisation décroissante
+ *   - ✅ Isolation totale — zéro impact sur données et calculs
  */
 
 class SimpleModeWizard {
@@ -187,7 +267,7 @@ class SimpleModeWizard {
     const container = document.getElementById('simpleModeContainer');
     const structure = SimpleModeData.structures[this.repasType];
     const totalEtapes = structure.length;
-    const aliments = SimpleModeData[etape.categorie] || [];
+    const aliments = SelectionCounter.sort(SimpleModeData[etape.categorie] || []);
 
     let html = `
       <div class="wizardHeader">
@@ -251,6 +331,7 @@ class SimpleModeWizard {
     } else if (sousEtape.categories) {
       sousEtape.categories.forEach(cat => { aliments = aliments.concat(SimpleModeData[cat] || []); });
     }
+    aliments = SelectionCounter.sort(aliments);
 
     let html = `
       <div class="wizardHeader">
@@ -298,14 +379,19 @@ class SimpleModeWizard {
     if (!this.selections[etapeId]) this.selections[etapeId] = [];
     const index = this.selections[etapeId].findIndex(s => s.id === alimentId);
     if (multiSelect) {
-      if (index >= 0) this.selections[etapeId].splice(index, 1);
-      else {
+      if (index >= 0) {
+        this.selections[etapeId].splice(index, 1);  // désélection — pas d'incrément
+      } else {
         const aliment = this.trouverAliment(alimentId);
-        if (aliment) this.selections[etapeId].push({ id: alimentId, ...aliment });
+        if (aliment) {
+          this.selections[etapeId].push({ id: alimentId, ...aliment });
+        }
       }
     } else {
       const aliment = this.trouverAliment(alimentId);
-      if (aliment) this.selections[etapeId] = [{ id: alimentId, ...aliment }];
+      if (aliment) {
+        this.selections[etapeId] = [{ id: alimentId, ...aliment }];
+      }
     }
     this.calculerTotaux();
     this.afficherEtape();
@@ -317,14 +403,19 @@ class SimpleModeWizard {
     const liste = this.selections[etapeId][sousEtapeId];
     const index = liste.findIndex(s => s.id === alimentId);
     if (multiSelect) {
-      if (index >= 0) liste.splice(index, 1);
-      else {
+      if (index >= 0) {
+        liste.splice(index, 1);                      // désélection — pas d'incrément
+      } else {
         const aliment = this.trouverAliment(alimentId);
-        if (aliment) liste.push({ id: alimentId, ...aliment });
+        if (aliment) {
+          liste.push({ id: alimentId, ...aliment });
+        }
       }
     } else {
       const aliment = this.trouverAliment(alimentId);
-      if (aliment) this.selections[etapeId][sousEtapeId] = [{ id: alimentId, ...aliment }];
+      if (aliment) {
+        this.selections[etapeId][sousEtapeId] = [{ id: alimentId, ...aliment }];
+      }
     }
     this.calculerTotaux();
     this.afficherEtape();
@@ -699,11 +790,38 @@ class SimpleModeWizard {
     document.body.appendChild(popup);
   }
 
+  /**
+   * Incrémente une seule fois par aliment sélectionné au moment de la validation.
+   * Appelé uniquement depuis validerRepas() — jamais pendant la composition.
+   */
+  _incrementerSelectionsValidees() {
+    const seen = new Set();
+    for (const [, selections] of Object.entries(this.selections)) {
+      if (Array.isArray(selections)) {
+        selections.forEach(a => {
+          if (!seen.has(a.id)) { SelectionCounter.increment(a.id); seen.add(a.id); }
+        });
+      } else if (typeof selections === 'object') {
+        for (const [, liste] of Object.entries(selections)) {
+          if (Array.isArray(liste)) {
+            liste.forEach(a => {
+              if (!seen.has(a.id)) { SelectionCounter.increment(a.id); seen.add(a.id); }
+            });
+          }
+        }
+      }
+    }
+    console.log(`📊 SelectionCounter : ${seen.size} aliment(s) incrémenté(s) pour ce repas`);
+  }
+
   validerRepas() {
     if (this.totalGlucides === 0) {
       this.afficherAlerteAucunGlucide();
       return;
     }
+
+    // Incrémenter les compteurs UNE FOIS par repas validé
+    this._incrementerSelectionsValidees();
 
     const carbsInput = document.getElementById('carbFast') || document.getElementById('carbs');
     if (carbsInput) {

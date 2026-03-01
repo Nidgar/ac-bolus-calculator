@@ -1,6 +1,24 @@
 /**
- * SIMPLE MODE DATA v3.4 — Source unique : aliments-index.json
+ * SIMPLE MODE DATA v3.6 — Source unique : aliments-index.json
  * ════════════════════════════════════════════════════════════
+ *
+ * MIGRATION v3.6 (2026-03-01) :
+ *   - ✅ AUDIT COMPLET : tous les aliments BDD maintenant mappés dans le wizard
+ *   - ✅ pain_cereales : +9 nouveaux pains dans les listes petit-déj/repas/goûter
+ *   - ✅ boissons : +11 nouvelles boissons dans les 3 contextes repas
+ *   - ✅ desserts_quotidiens : +6 (skyr, yaourt grec, fromage blanc 0%, crème anglaise, panna cotta, île flottante)
+ *   - ✅ desserts_festifs : +14 (brownie, muffin, tiramisu, crumble, chocolats...)
+ *   - ✅ patisseries : nouvelle section — 24 pâtisseries françaises
+ *   - ✅ legumineuses : nouvelle section — mappée dans sous-étape plat principal
+ *   - ✅ plats_chauds : nouvelle section — nouvelle étape wizard "Plat préparé"
+ *   - ✅ Dessert : 3 sous-étapes (Yaourts, Pâtisseries, Fruits)
+ *   - ✅ Plat principal : 4 sous-étapes (Féculent, Légumineuses, Légumes, Protéine)
+ *   - ✅ galette_riz, chapelure, ble_precuit exclus volontairement (ingrédients cuisine)
+ *
+ * MIGRATION v3.5 (2026-03-01) :
+ *   - ✅ entrees_froides mappée dans le wizard (catégorie BDD v3.2)
+ *   - ✅ Fusion dans l'étape Entrée : charcuterie fine en tête, puis légumes, soupe, crudités
+ *   - ✅ SimpleModeData.entrees_froides exposée séparément (usage futur)
  *
  * MIGRATION v3.4 (2026-03-01) :
  *   - ✅ Nouvelle étape "Sauces & Condiments" dans dejeuner/dîner (étape 5)
@@ -77,6 +95,7 @@ const SimpleModeData = {
   petit_dej_garniture: [],
 
   entrees:             [],
+  entrees_froides:     [],
 
   feculents:           [],
   legumes:             [],
@@ -158,42 +177,55 @@ const SimpleModeData = {
         obligatoire: false, multiSelect: true, canSkip: true
       },
       {
-        etape: 4, id: "plat",
+        etape: 4, id: "plat_prepare",
+        titre: "Plat préparé", emoji: "🍲",
+        question: "Un plat préparé / complet ?",
+        categorie: "plats_chauds",
+        obligatoire: false, multiSelect: false, canSkip: true
+      },
+      {
+        etape: 5, id: "plat",
         titre: "Plat", emoji: "🍽️",
         question: "Ton plat principal",
         sousEtapes: [
-          { id: "feculent", titre: "Choisis ton féculent", categorie: "feculents",  obligatoire: true,  multiSelect: true },
-          { id: "legumes",  titre: "Ajoute des légumes",   categorie: "legumes",    obligatoire: false, multiSelect: true },
-          { id: "proteine", titre: "Ajoute une protéine",  categorie: "proteines",  obligatoire: false, multiSelect: true }
+          { id: "feculent",     titre: "🍝 Féculent",        categorie: "feculents",    obligatoire: true,  multiSelect: true },
+          { id: "legumineuse",  titre: "🫘 Légumineuses",    categorie: "legumineuses", obligatoire: false, multiSelect: true },
+          { id: "legumes",      titre: "🥦 Légumes",          categorie: "legumes",      obligatoire: false, multiSelect: true },
+          { id: "proteine",     titre: "🍗 Protéine",         categorie: "proteines",    obligatoire: false, multiSelect: true }
         ],
         obligatoire: true, canSkip: false
       },
       {
-        etape: 5, id: "sauces",
+        etape: 6, id: "sauces",
         titre: "Sauces", emoji: "🫙",
         question: "Une sauce ou condiment ?",
         categorie: "sauces_condiments",
         obligatoire: false, multiSelect: true, canSkip: true
       },
       {
-        etape: 6, id: "fromage",
+        etape: 7, id: "fromage",
         titre: "Fromage", emoji: "🧀",
         question: "Du fromage ?",
         categorie: "fromages",
         obligatoire: false, multiSelect: true, canSkip: true
       },
       {
-        etape: 7, id: "dessert",
+        etape: 8, id: "dessert",
         titre: "Dessert", emoji: "🍰",
         question: "Un dessert ?",
         sousEtapes: [
           {
-            id: "yaourts_patisseries", titre: "🍮 Yaourts & Pâtisseries",
-            categories: ["desserts_quotidiens", "desserts_festifs"],
+            id: "yaourts_glaces",   titre: "🍮 Yaourts & Desserts",
+            categorie: "desserts_quotidiens",
             obligatoire: false, multiSelect: true
           },
           {
-            id: "fruits_dessert", titre: "🍎 Fruits",
+            id: "patisseries",      titre: "🥐 Pâtisseries",
+            categories: ["desserts_festifs", "patisseries"],
+            obligatoire: false, multiSelect: true
+          },
+          {
+            id: "fruits_dessert",   titre: "🍎 Fruits",
             categorie: "desserts_fruits",
             obligatoire: false, multiSelect: true
           }
@@ -349,29 +381,51 @@ const SimpleModeDataBuilder = {
 
     // ── BOISSONS ─────────────────────────────────────────────────────────
     SimpleModeData.boissons_petit_dej = p('boissons', [
-      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme', 'cafe', 'the'
+      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme',
+      'jus_ananas', 'jus_mangue', 'smoothie_fruits',
+      'lait_amande', 'lait_avoine', 'lait_coco', 'cafe', 'the'
     ]);
 
+    // Laits végétaux et fermentés — boissons alternatives petit-déj / goûter
+    // (lait_entier, lait_ecreme, lait_soja, kefir sont dans produits_laitiers BDD
+    //  mais servis comme boissons → mappés ici via _pick inline)
+    const laitsBoissonPdej = [
+      ...p('produits_laitiers', ['lait_entier', 'lait_demi_ecreme', 'lait_ecreme', 'lait_soja', 'kefir'])
+    ];
+    SimpleModeData.boissons_petit_dej = [...SimpleModeData.boissons_petit_dej, ...laitsBoissonPdej];
+
     SimpleModeData.boissons_repas = p('boissons', [
-      'eau', 'sirop_fruit', 'coca_cola', 'the_glace', 'limonade'
+      'eau', 'sirop_fruit', 'coca_cola', 'the_glace', 'limonade',
+      'jus_orange', 'jus_pomme', 'jus_raisin', 'jus_tomate',
+      'jus_cranberry', 'jus_ananas', 'jus_mangue',
+      'lait_amande', 'lait_avoine', 'kombucha', 'boisson_sportive'
     ]);
 
     SimpleModeData.boissons_gouter = p('boissons', [
-      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme', 'coca_cola', 'sirop_fruit'
+      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme',
+      'jus_raisin', 'jus_ananas', 'jus_mangue', 'smoothie_fruits',
+      'lait_amande', 'lait_avoine', 'lait_coco', 'coca_cola', 'sirop_fruit', 'kombucha'
     ]);
+    SimpleModeData.boissons_gouter = [
+      ...SimpleModeData.boissons_gouter,
+      ...p('produits_laitiers', ['lait_entier', 'lait_ecreme', 'lait_soja', 'kefir'])
+    ];
 
     // ── PAINS ─────────────────────────────────────────────────────────────
     SimpleModeData.pains_petit_dej = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'biscotte', 'pain_epices', 'pain_epeautre'
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle', 'pain_seigle_complet',
+      'biscotte', 'cracotte', 'pain_epices', 'pain_epeautre', 'pain_cereales_multi'
     ]);
 
     SimpleModeData.pains = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle',
-      'pain_campagne', 'biscotte', 'pain_epeautre'
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle', 'pain_seigle_complet',
+      'pain_campagne', 'biscotte', 'cracotte', 'pain_epeautre', 'pain_cereales_multi',
+      'pain_pita', 'pain_naan', 'bagel', 'tortilla_ble', 'pain_hamburger'
     ]);
 
     SimpleModeData.pains_gouter = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'brioche', 'pain_epices'
+      'pain_blanc', 'pain_complet', 'pain_mie', 'brioche', 'pain_epices',
+      'pain_cereales_multi', 'cracotte', 'pain_seigle_complet'
     ]);
 
     // ── PETIT-DÉJEUNER ───────────────────────────────────────────────────
@@ -383,7 +437,7 @@ const SimpleModeDataBuilder = {
     ];
 
     SimpleModeData.petit_dej_garniture = m([
-      ['produits_laitiers', ['beurre', 'fromage_tartiner']],
+      ['produits_laitiers', ['beurre', 'fromage_tartiner', 'creme_fraiche', 'lait_concentre_sucre']],
       ['desserts_sucreries', ['confiture', 'miel', 'pate_tartiner']]
     ]);
 
@@ -393,20 +447,28 @@ const SimpleModeDataBuilder = {
       id: 'crudites', nom: 'Crudités variées', emoji: '🥗',
       glucides: 5, ig: 20, portion: '1 assiette (100g)'
     };
+    // Populer entrees_froides pour usage éventuel en section isolée
+    SimpleModeData.entrees_froides = p('entrees_froides', null);  // tous
+
     SimpleModeData.entrees = [
+      // Entrées froides & charcuterie fine (nouvelle catégorie v3.2)
+      ...SimpleModeData.entrees_froides,
+      // Crudités & légumes froids
       ...p('legumes', ['salade', 'tomate', 'concombre', 'carotte']),
+      // Entrée chaude
       ...p('plats_prepares', ['soupe_legumes']),
       cruditesItem
     ];
 
     // ── PLAT PRINCIPAL ────────────────────────────────────────────────────
     SimpleModeData.feculents  = p('feculents',  null);  // tous
+    SimpleModeData.legumineuses = p('legumineuses', null); // tous (fèves, lentilles, pois chiches...)
     SimpleModeData.legumes    = p('legumes',    null);  // tous
     SimpleModeData.proteines  = p('proteines',  null);  // tous
 
     // ── FROMAGES ──────────────────────────────────────────────────────────
     SimpleModeData.fromages = p('produits_laitiers', [
-      'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_tartiner'
+      'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_tartiner', 'creme_fraiche'
     ]);
 
     // ── DESSERTS ──────────────────────────────────────────────────────────
@@ -425,16 +487,34 @@ const SimpleModeDataBuilder = {
     ]);
 
     SimpleModeData.desserts_quotidiens = p('produits_laitiers', [
-      'yaourt_nature', 'yaourt_fruits', 'fromage_blanc', 'petit_suisse',
-      'compote', 'creme_dessert', 'flan', 'mousse_chocolat', 'riz_lait'
+      'yaourt_nature', 'yaourt_fruits', 'yaourt_grec', 'skyr',
+      'fromage_blanc', 'fromage_blanc_0', 'petit_suisse',
+      'compote', 'creme_dessert', 'flan', 'mousse_chocolat', 'riz_lait',
+      'creme_anglaise', 'panna_cotta', 'ile_flottante'
     ]);
 
+    // Desserts festifs classiques
     SimpleModeData.desserts_festifs = p('desserts_sucreries', [
-      'gateau_chocolat', 'cookie', 'glace_vanille', 'crepe_nature', 'tarte_fruits'
+      'gateau_chocolat', 'cookie', 'glace_vanille', 'crepe_nature', 'tarte_fruits',
+      'brownie', 'muffin', 'tiramisu', 'crumble', 'pain_perdu',
+      'chocolat_noir', 'chocolat_lait', 'bonbon', 'sucre_blanc'
+    ]);
+
+    // Pâtisseries françaises (nouvelle section v3.6)
+    SimpleModeData.patisseries = p('desserts_sucreries', [
+      'tarte_fraise', 'tarte_citron', 'tarte_pommes', 'tarte_tatin',
+      'eclair_chocolat', 'millefeuille', 'chou_creme', 'profiteroles',
+      'paris_brest', 'religieuse', 'saint_honore', 'baba_rhum',
+      'fraisier', 'opera', 'charlotte_fraises',
+      'fondant_chocolat', 'clafoutis', 'far_breton', 'biscuit_roule',
+      'macaron', 'sable_breton', 'nougat', 'calisson', 'touron'
     ]);
 
     // ── SAUCES & CONDIMENTS ──────────────────────────────────────────────────
     SimpleModeData.sauces_condiments = p('sauces_condiments', null);  // tous
+
+    // ── PLATS PRÉPARÉS (nouvelle section v3.6) ───────────────────────────────
+    SimpleModeData.plats_chauds = p('plats_prepares', null);  // tous
 
     // ── GOÛTER ────────────────────────────────────────────────────────────
     SimpleModeData.gouter_contenu = [
