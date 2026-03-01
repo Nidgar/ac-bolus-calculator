@@ -163,7 +163,7 @@ class FoodDatabase {
     const resolvedPath = this._resolveJsonPath(jsonPath);
 
     const _attempt = async () => {
-      const response = await fetch(resolvedPath);
+      const response = await fetch(resolvedPath + (resolvedPath.includes('?') ? '&' : '?') + 'v=3.0');
       if (!response.ok) throw new Error(`HTTP ${response.status} — ${resolvedPath}`);
       return response.json();
     };
