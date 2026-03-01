@@ -1,6 +1,31 @@
 /**
- * SIMPLE MODE DATA v3.0 — Source unique : aliments-index.json
+ * SIMPLE MODE DATA v3.4 — Source unique : aliments-index.json
  * ════════════════════════════════════════════════════════════
+ *
+ * MIGRATION v3.4 (2026-03-01) :
+ *   - ✅ Nouvelle étape "Sauces & Condiments" dans dejeuner/dîner (étape 5)
+ *       → 7 aliments : ketchup, moutarde, mayo, sauce soja, vinaigrette, huile d'olive, sauce tomate
+ *   - ✅ Fromage décalé étape 6, Dessert étape 7
+ *   - ✅ EMOJI_OVERRIDES enrichi : sauce_soja 🥢, vinaigrette 🥗, sauce_tomate 🫙
+ *   - ✅ Aucune modification du wizard
+ *
+ * MIGRATION v3.3 (2026-03-01) :
+ *   - ✅ desserts_fruits : fruits_secs ajouté (cohérent avec fruits_frais)
+ *   - ✅ Framboise : emoji corrigé 🫐 → 🔴 (wizard only, BDD inchangée)
+ *       via EMOJI_OVERRIDES — mécanisme réutilisable pour futurs conflits
+ *
+ * MIGRATION v3.2 (2026-03-01) :
+ *   - ✅ desserts_fruits : 8 → 17 fruits (ajout mandarine, framboise, melon,
+ *       pastèque, abricot, cerise, ananas, mangue, myrtille)
+ *   - ✅ fruits_frais : 13 → 18 entrées (idem + fruits_secs)
+ *   - ✅ Constante partagée tousLesFruitsFrais pour éviter toute divergence future
+ *   - ✅ Aucune modification wizard ni structure
+ *
+ * MIGRATION v3.1 (2026-03-01) :
+ *   - ✅ Desserts séparés en 2 sous-étapes distinctes :
+ *       → "🍮 Yaourts & Pâtisseries" (desserts_quotidiens + desserts_festifs)
+ *       → "🍎 Fruits" (desserts_fruits)
+ *   - ✅ Aucun changement sur les données ni sur le wizard (zéro dommage collatéral)
  *
  * MIGRATION v3.0 (2026-03-01) :
  *   - ✅ Source de données unifiée : aliments-index.json v3.0 (144 aliments)
@@ -144,20 +169,32 @@ const SimpleModeData = {
         obligatoire: true, canSkip: false
       },
       {
-        etape: 5, id: "fromage",
+        etape: 5, id: "sauces",
+        titre: "Sauces", emoji: "🫙",
+        question: "Une sauce ou condiment ?",
+        categorie: "sauces_condiments",
+        obligatoire: false, multiSelect: true, canSkip: true
+      },
+      {
+        etape: 6, id: "fromage",
         titre: "Fromage", emoji: "🧀",
         question: "Du fromage ?",
         categorie: "fromages",
         obligatoire: false, multiSelect: true, canSkip: true
       },
       {
-        etape: 6, id: "dessert",
+        etape: 7, id: "dessert",
         titre: "Dessert", emoji: "🍰",
         question: "Un dessert ?",
         sousEtapes: [
           {
-            id: "choix", titre: "Choisis ton dessert",
-            categories: ["desserts_fruits", "desserts_quotidiens", "desserts_festifs"],
+            id: "yaourts_patisseries", titre: "🍮 Yaourts & Pâtisseries",
+            categories: ["desserts_quotidiens", "desserts_festifs"],
+            obligatoire: false, multiSelect: true
+          },
+          {
+            id: "fruits_dessert", titre: "🍎 Fruits",
+            categorie: "desserts_fruits",
             obligatoire: false, multiSelect: true
           }
         ],
@@ -239,6 +276,19 @@ SimpleModeData.structures.diner = SimpleModeData.structures.dejeuner;
 const SimpleModeDataBuilder = {
 
   /**
+   * Corrections d'emojis wizard — appliquées par-dessus la BDD.
+   * Utile quand deux aliments partagent le même emoji en BDD (ex: framboise et myrtille → 🫐).
+   * La BDD reste inchangée ; seul l'affichage wizard est patché ici.
+   */
+  EMOJI_OVERRIDES: {
+    framboise:   '🔴',  // 🫐 déjà utilisé par myrtille — 🔴 = petit fruit rouge reconnaissable
+    sauce_soja:  '🥢',  // 🫙 déjà utilisé par vinaigrette
+    vinaigrette: '🥗',  // 🫙 déjà utilisé par sauce_soja
+    ketchup:     '🍅',  // OK — sauce_tomate sera patchée
+    sauce_tomate:'🫙',  // 🍅 déjà utilisé par ketchup
+  },
+
+  /**
    * Convertit un aliment BDD en format wizard.
    * @param {Object} a - Aliment de la BDD (avec portion_usuelle et portion_label)
    * @returns {Object} Aliment au format wizard
@@ -249,7 +299,7 @@ const SimpleModeDataBuilder = {
     return {
       id:       a.id,
       nom:      a.nom,
-      emoji:    a.emoji || '🍽️',
+      emoji:    this.EMOJI_OVERRIDES[a.id] || a.emoji || '🍽️',
       glucides: glucidesParPortion,            // g / portion — usage wizard uniquement
       ig:       a.ig,                          // null conservé (wizard: a.ig || 0 → 0)
       portion:  a.portion_label || `${a.portion_usuelle.quantite}${a.portion_usuelle.unite}`
@@ -360,13 +410,18 @@ const SimpleModeDataBuilder = {
     ]);
 
     // ── DESSERTS ──────────────────────────────────────────────────────────
-    SimpleModeData.desserts_fruits = p('fruits', [
-      'pomme', 'poire', 'banane', 'orange', 'fraise', 'raisin', 'kiwi', 'peche'
-    ]);
+    // Tous les fruits frais disponibles en BDD (17 fruits, sans fruits_secs)
+    const tousLesFruitsFrais = [
+      'pomme', 'poire', 'banane', 'orange', 'mandarine',
+      'fraise', 'framboise', 'raisin', 'kiwi', 'peche',
+      'melon', 'pasteque', 'abricot', 'cerise', 'ananas', 'mangue', 'myrtille'
+    ];
+
+    SimpleModeData.desserts_fruits = p('fruits', [...tousLesFruitsFrais, 'fruits_secs']);
 
     SimpleModeData.fruits_frais = p('fruits', [
-      'pomme', 'poire', 'banane', 'orange', 'fraise', 'raisin',
-      'kiwi', 'peche', 'mandarine', 'melon', 'pasteque', 'cerise', 'fruits_secs'
+      ...tousLesFruitsFrais,
+      'fruits_secs'
     ]);
 
     SimpleModeData.desserts_quotidiens = p('produits_laitiers', [
@@ -377,6 +432,9 @@ const SimpleModeDataBuilder = {
     SimpleModeData.desserts_festifs = p('desserts_sucreries', [
       'gateau_chocolat', 'cookie', 'glace_vanille', 'crepe_nature', 'tarte_fruits'
     ]);
+
+    // ── SAUCES & CONDIMENTS ──────────────────────────────────────────────────
+    SimpleModeData.sauces_condiments = p('sauces_condiments', null);  // tous
 
     // ── GOÛTER ────────────────────────────────────────────────────────────
     SimpleModeData.gouter_contenu = [
