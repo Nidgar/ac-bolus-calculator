@@ -442,10 +442,38 @@ class SimpleModeWizard {
 
   passerSousEtape() { this.sousEtapeSuivante(); }
 
+  /**
+   * Compte dynamiquement le nombre d'aliments distincts dans la base.
+   * Priorité : window.foodSearchUI.db.getTotalAliments() → SimpleModeData → fallback "?"
+   */
+  getTotalAlimentsDB() {
+    // Source 1 : FoodDatabase via FoodSearchUI (la plus fiable — BDD complète chargée)
+    try {
+      const total = window.foodSearchUI?.db?.getTotalAliments?.();
+      if (typeof total === 'number' && total > 0) return total;
+    } catch (_) {}
+
+    // Source 2 : Compter depuis SimpleModeData (données du wizard — sous-ensemble)
+    try {
+      let count = 0;
+      const seen = new Set();
+      for (const [, val] of Object.entries(SimpleModeData)) {
+        if (Array.isArray(val)) {
+          val.forEach(a => { if (a.id && !seen.has(a.id)) { seen.add(a.id); count++; } });
+        }
+      }
+      if (count > 0) return count;
+    } catch (_) {}
+
+    return '?';
+  }
+
   ouvrirRechercheLibre(etapeId, sousEtapeId = null) {
     // Évite les doublons
     const existingPopup = document.getElementById('rechercheComingSoonPopup');
     if (existingPopup) existingPopup.remove();
+
+    const nbAliments = this.getTotalAlimentsDB();
 
     const popup = document.createElement('div');
     popup.id = 'rechercheComingSoonPopup';
@@ -492,7 +520,7 @@ class SimpleModeWizard {
         <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(180, 215, 255, 0.85); margin-bottom: 10px;">Fonctionnalité à venir</div>
         <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 14px; line-height: 1.3;">Recherche dans la base complète</h2>
         <p style="font-size: 14px; font-weight: 500; line-height: 1.6; color: rgba(200, 230, 255, 0.9); margin: 0 0 28px;">
-          Bientôt, tu pourras rechercher parmi les <strong style="color:#fff;">99 aliments</strong> de la base pour affiner la composition de ton repas.
+          Bientôt, tu pourras rechercher parmi les <strong style="color:#fff;">${nbAliments} aliments</strong> de la base pour affiner la composition de ton repas.
         </p>
         <button id="rechercheComingSoonClose" style="
           background: rgba(255,255,255,0.18);

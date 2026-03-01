@@ -1,36 +1,29 @@
 {
-  "version": "2.2",
+  "version": "3.0",
   "date": "2026-03-01",
-  "description": "Base de données complète - 99 aliments, 9 catégories optimisées",
+  "description": "Base de données unifiée — 147 aliments, 12 catégories. Source unique pour modes Initié et Simple.",
   "schema": {
-    "note": "Champs stables — refactor P1 (carbs_g/gi/default_portion) écarté : risque/gain défavorable sur app 100% francophone.",
-    "glucides": "g pour 100g ou 100ml selon l'aliment (voir portion_usuelle.unite)",
-    "ig": "Index Glycémique — acronyme français retenu volontairement (vs 'gi' anglais)",
-    "portion_usuelle": "Portion de référence réelle — base des calculs CG dynamiques (cf. getCGPortion)"
+    "glucides": "g POUR 100g ou 100ml — TOUJOURS /100g, jamais par portion. Calculs : (glucides × quantite_g) / 100",
+    "ig": "Index Glycémique. null = non applicable (viandes, poissons, graisses). Calculs : ig ?? 0",
+    "portion_usuelle": "Objet {quantite, unite, description} — utilisé par FoodDatabase.getCGPortion() et calculateMeal()",
+    "portion_label": "String lisible pour l'UI wizard Simple (ex: '1 assiette (200g)') — affiché tel quel, pas utilisé dans les calculs",
+    "emoji": "Emoji affiché dans le wizard Simple et optionnellement dans l'UI Initié",
+    "synonymes": "Tableau de strings pour le moteur de recherche Initié (FoodDatabase.matchAliment)",
+    "simple_categories": "Tableau des sections SimpleModeData auxquelles cet aliment appartient (mapping pour le wizard)"
   },
   "qa": {
-    "alias_collisions_policy": "Les alias génériques (viennoiserie, chocolat, poisson) retournant plusieurs résultats sont INTENTIONNELS et traités par le scoring de recherche. Sont INTERDITS : les alias identiques au nom ou id d'un aliment dédié (ex: 'couscous' comme synonyme de semoule alors qu'un id 'couscous' existe).",
+    "unification": "v3.0 — fusion aliments-index.json v2.2 + simple-mode-data.js v2.0. Un seul fichier, deux modes.",
+    "calcul_glucides": "CRITIQUE : glucides toujours en g/100g. Le wizard Simple affiche portion_label mais calcule via glucides×portion_usuelle.quantite/100. Ne jamais stocker 'glucides par portion' dans ce champ.",
+    "ig_null_policy": "ig=null = IG non applicable (viandes, poissons, graisses pures). Traiter comme 0 dans les calculs (ig ?? 0). Afficher N/A dans l'UI.",
+    "ig_null_ids": ["beurre","fromage_pate_dure","jambon_blanc","jambon_cru","poulet","saucisse","saucisson","saumon","steak_hache","thon","oeuf_entier","dinde","crevettes","saumon_fume","camembert","chevre","fromage_tartiner","fromage_fondu","huile_olive"],
+    "alias_collisions_policy": "Alias génériques retournant plusieurs résultats sont INTENTIONNELS. Sont INTERDITS : alias identiques au nom ou id d'un aliment dédié.",
     "last_audit": "2026-03-01",
-    "collisions_resolved": [
-      "semoule.synonymes: suppression de 'couscous' (id dédié existant)"
-    ],
     "collisions_accepted": [
-      "viennoiserie → croissant + pain_chocolat (terme générique, comportement attendu)",
-      "chocolat → chocolat_noir + chocolat_lait (désambiguïsation UI via scoring)",
-      "poisson → saumon + thon (terme générique, comportement attendu)"
-    ],
-    "ig_null_policy": "ig=null signifie 'IG non applicable' (viandes, poissons, matières grasses). Ne pas confondre avec ig=0 (IG mesuré nul). Dans les calculs : traiter null comme 0 via '?? 0'. Dans l'UI : afficher 'N/A' au lieu de '0'.",
-    "ig_null_ids": [
-      "beurre",
-      "fromage_pate_dure",
-      "jambon_blanc",
-      "jambon_cru",
-      "poulet",
-      "saucisse",
-      "saucisson",
-      "saumon",
-      "steak_hache",
-      "thon"
+      "viennoiserie → croissant + pain_chocolat",
+      "chocolat → chocolat_noir + chocolat_lait",
+      "poisson → saumon + thon + saumon_fume + crevettes",
+      "jambon → jambon_blanc + jambon_cru",
+      "lentille → lentilles_vertes + lentilles_corail"
     ]
   },
   "categories": [
@@ -42,148 +35,142 @@
         {
           "id": "pain_blanc",
           "nom": "Pain blanc",
-          "synonymes": [
-            "baguette",
-            "pain"
-          ],
+          "emoji": "🥖",
+          "synonymes": ["baguette", "pain"],
           "glucides": 55,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
         },
         {
           "id": "pain_complet",
           "nom": "Pain complet",
-          "synonymes": [
-            "pain integral",
-            "pain cereales"
-          ],
+          "emoji": "🍞",
+          "synonymes": ["pain integral", "pain cereales"],
           "glucides": 48,
           "ig": 45,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
         },
         {
           "id": "pain_mie",
           "nom": "Pain de mie",
-          "synonymes": [
-            "toast",
-            "pain mie"
-          ],
+          "emoji": "🍞",
+          "synonymes": ["toast", "pain mie"],
           "glucides": 50,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
         },
         {
           "id": "biscotte",
           "nom": "Biscottes",
-          "synonymes": [
-            "biscotte"
-          ],
+          "emoji": "🍞",
+          "synonymes": ["biscotte"],
           "glucides": 75,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 20,
-            "unite": "g",
-            "description": "2 biscottes"
-          }
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "2 biscottes" },
+          "portion_label": "2 biscottes (20g)"
+        },
+        {
+          "id": "pain_seigle",
+          "nom": "Pain de seigle",
+          "emoji": "🍞",
+          "synonymes": ["seigle"],
+          "glucides": 48,
+          "ig": 50,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
+        },
+        {
+          "id": "pain_campagne",
+          "nom": "Pain de campagne",
+          "emoji": "🥖",
+          "synonymes": ["pain campagne"],
+          "glucides": 52,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
+        },
+        {
+          "id": "pain_epeautre",
+          "nom": "Pain d'épeautre",
+          "emoji": "🌾",
+          "synonymes": ["epeautre"],
+          "glucides": 50,
+          "ig": 40,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
+        },
+        {
+          "id": "pain_epices",
+          "nom": "Pain d'épices",
+          "emoji": "🍞",
+          "synonymes": ["pain epices"],
+          "glucides": 75,
+          "ig": 70,
+          "portion_usuelle": { "quantite": 40, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (40g)"
         },
         {
           "id": "cereales_nature",
           "nom": "Céréales nature",
-          "synonymes": [
-            "corn flakes",
-            "cereales"
-          ],
+          "emoji": "🥣",
+          "synonymes": ["corn flakes", "cereales"],
           "glucides": 85,
           "ig": 85,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (30g)"
         },
         {
           "id": "muesli",
           "nom": "Muesli",
-          "synonymes": [
-            "granola"
-          ],
+          "emoji": "🥣",
+          "synonymes": ["granola"],
           "glucides": 66,
           "ig": 50,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (50g)"
         },
         {
           "id": "flocons_avoine",
           "nom": "Flocons d'avoine",
-          "synonymes": [
-            "avoine",
-            "porridge"
-          ],
+          "emoji": "🥣",
+          "synonymes": ["avoine", "porridge"],
           "glucides": 60,
           "ig": 55,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (50g)"
         },
         {
           "id": "croissant",
           "nom": "Croissant",
-          "synonymes": [
-            "viennoiserie"
-          ],
+          "emoji": "🥐",
+          "synonymes": ["viennoiserie"],
           "glucides": 45,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 60,
-            "unite": "g",
-            "description": "1 croissant"
-          }
+          "portion_usuelle": { "quantite": 60, "unite": "g", "description": "1 croissant" },
+          "portion_label": "1 croissant (60g)"
         },
         {
           "id": "pain_chocolat",
           "nom": "Pain au chocolat",
-          "synonymes": [
-            "chocolatine",
-            "viennoiserie"
-          ],
+          "emoji": "🥐",
+          "synonymes": ["chocolatine", "viennoiserie"],
           "glucides": 48,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 70,
-            "unite": "g",
-            "description": "1 pain au chocolat"
-          }
+          "portion_usuelle": { "quantite": 70, "unite": "g", "description": "1 pain au chocolat" },
+          "portion_label": "1 pain au chocolat (70g)"
         },
         {
           "id": "brioche",
           "nom": "Brioche",
-          "synonymes": [
-            "pain brioche"
-          ],
+          "emoji": "🍞",
+          "synonymes": ["pain brioche"],
           "glucides": 50,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
         }
       ]
     },
@@ -195,209 +182,152 @@
         {
           "id": "pates_blanches",
           "nom": "Pâtes blanches cuites",
-          "synonymes": [
-            "pates",
-            "spaghetti",
-            "coquillettes",
-            "macaroni"
-          ],
+          "emoji": "🍝",
+          "synonymes": ["pates", "spaghetti", "coquillettes", "macaroni"],
           "glucides": 25,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (200g cuit)"
         },
         {
           "id": "pates_completes",
           "nom": "Pâtes complètes cuites",
-          "synonymes": [
-            "pates integrales",
-            "pates completes"
-          ],
+          "emoji": "🍝",
+          "synonymes": ["pates integrales", "pates completes"],
           "glucides": 23,
           "ig": 40,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (200g cuit)"
         },
         {
           "id": "riz_blanc",
           "nom": "Riz blanc cuit",
-          "synonymes": [
-            "riz"
-          ],
+          "emoji": "🍚",
+          "synonymes": ["riz"],
           "glucides": 28,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (150g cuit)"
         },
         {
           "id": "riz_complet",
           "nom": "Riz complet cuit",
-          "synonymes": [
-            "riz brun",
-            "riz integral"
-          ],
+          "emoji": "🍚",
+          "synonymes": ["riz brun", "riz integral"],
           "glucides": 23,
           "ig": 50,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (150g cuit)"
         },
         {
           "id": "riz_basmati",
           "nom": "Riz basmati cuit",
-          "synonymes": [
-            "basmati"
-          ],
+          "emoji": "🍚",
+          "synonymes": ["basmati"],
           "glucides": 25,
           "ig": 58,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (150g cuit)"
         },
         {
           "id": "quinoa",
           "nom": "Quinoa cuit",
-          "synonymes": [
-            "quinoa"
-          ],
+          "emoji": "🌾",
+          "synonymes": ["quinoa"],
           "glucides": 21,
           "ig": 53,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "semoule",
           "nom": "Semoule cuite",
-          "synonymes": [
-            "semoule couscous"
-          ],
+          "emoji": "🍚",
+          "synonymes": ["semoule couscous"],
           "glucides": 23,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
+        },
+        {
+          "id": "boulgour",
+          "nom": "Boulgour cuit",
+          "emoji": "🌾",
+          "synonymes": ["boulghour", "bulgur"],
+          "glucides": 23,
+          "ig": 48,
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "vermicelles",
           "nom": "Vermicelles de riz",
-          "synonymes": [
-            "nouilles riz",
-            "vermicelle"
-          ],
+          "emoji": "🍜",
+          "synonymes": ["nouilles riz", "vermicelle"],
           "glucides": 24,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
         },
         {
           "id": "pomme_terre_vapeur",
           "nom": "Pommes de terre vapeur",
-          "synonymes": [
-            "patate vapeur",
-            "pomme terre",
-            "pdt"
-          ],
+          "emoji": "🥔",
+          "synonymes": ["patate vapeur", "pomme terre", "pdt"],
           "glucides": 20,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "2-3 pommes de terre"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "2-3 pommes de terre" },
+          "portion_label": "2-3 pommes de terre (150g)"
         },
         {
           "id": "puree",
           "nom": "Purée de pommes de terre",
-          "synonymes": [
-            "puree",
-            "ecrasee"
-          ],
+          "emoji": "🥔",
+          "synonymes": ["puree", "ecrasee"],
           "glucides": 16,
           "ig": 90,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "frites",
           "nom": "Frites",
-          "synonymes": [
-            "pomme terre frite",
-            "patate frite"
-          ],
+          "emoji": "🍟",
+          "synonymes": ["pomme terre frite", "patate frite"],
           "glucides": 35,
           "ig": 75,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "pomme_terre_rotie",
           "nom": "Pommes de terre rôties",
-          "synonymes": [
-            "patate rotie",
-            "pomme terre four"
-          ],
+          "emoji": "🥔",
+          "synonymes": ["patate rotie", "pomme terre four"],
           "glucides": 22,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "patate_douce",
           "nom": "Patate douce",
-          "synonymes": [
-            "patate"
-          ],
+          "emoji": "🍠",
+          "synonymes": ["patate"],
           "glucides": 20,
           "ig": 61,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "gnocchi",
           "nom": "Gnocchi",
-          "synonymes": [
-            "gnocchis"
-          ],
+          "emoji": "🥟",
+          "synonymes": ["gnocchis"],
           "glucides": 28,
           "ig": 68,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         }
       ]
     },
@@ -409,77 +339,52 @@
         {
           "id": "lentilles_vertes",
           "nom": "Lentilles vertes cuites",
-          "synonymes": [
-            "lentille",
-            "lentilles"
-          ],
+          "emoji": "🌰",
+          "synonymes": ["lentille", "lentilles"],
           "glucides": 20,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "lentilles_corail",
           "nom": "Lentilles corail cuites",
-          "synonymes": [
-            "lentille rouge",
-            "lentille corail"
-          ],
+          "emoji": "🌰",
+          "synonymes": ["lentille rouge", "lentille corail"],
           "glucides": 21,
           "ig": 26,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "pois_chiches",
           "nom": "Pois chiches cuits",
-          "synonymes": [
-            "pois chiche",
-            "houmous base"
-          ],
+          "emoji": "🌰",
+          "synonymes": ["pois chiche", "houmous base"],
           "glucides": 27,
           "ig": 28,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "haricots_blancs",
           "nom": "Haricots blancs cuits",
-          "synonymes": [
-            "haricot blanc",
-            "mogette"
-          ],
+          "emoji": "🫘",
+          "synonymes": ["haricot blanc", "mogette"],
           "glucides": 21,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         },
         {
           "id": "haricots_rouges",
           "nom": "Haricots rouges cuits",
-          "synonymes": [
-            "haricot rouge",
-            "kidney"
-          ],
+          "emoji": "🫘",
+          "synonymes": ["haricot rouge", "kidney"],
           "glucides": 22,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g cuit)"
         }
       ]
     },
@@ -491,201 +396,182 @@
         {
           "id": "pomme",
           "nom": "Pomme",
-          "synonymes": [
-            "golden",
-            "gala",
-            "granny"
-          ],
+          "emoji": "🍎",
+          "synonymes": ["golden", "gala", "granny"],
           "glucides": 14,
           "ig": 38,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 pomme"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 pomme" },
+          "portion_label": "1 pomme (150g)"
         },
         {
           "id": "poire",
           "nom": "Poire",
-          "synonymes": [
-            "williams",
-            "conference"
-          ],
+          "emoji": "🍐",
+          "synonymes": ["williams", "conference"],
           "glucides": 15,
           "ig": 38,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 poire"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 poire" },
+          "portion_label": "1 poire (150g)"
         },
         {
           "id": "banane",
           "nom": "Banane",
+          "emoji": "🍌",
           "synonymes": [],
           "glucides": 23,
           "ig": 52,
-          "portion_usuelle": {
-            "quantite": 120,
-            "unite": "g",
-            "description": "1 banane"
-          }
+          "portion_usuelle": { "quantite": 120, "unite": "g", "description": "1 banane" },
+          "portion_label": "1 banane (120g)"
         },
         {
           "id": "orange",
           "nom": "Orange",
+          "emoji": "🍊",
           "synonymes": [],
           "glucides": 12,
           "ig": 43,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 orange"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 orange" },
+          "portion_label": "1 orange (150g)"
         },
         {
           "id": "mandarine",
           "nom": "Mandarine",
-          "synonymes": [
-            "clementine"
-          ],
+          "emoji": "🍊",
+          "synonymes": ["clementine"],
           "glucides": 13,
           "ig": 40,
-          "portion_usuelle": {
-            "quantite": 80,
-            "unite": "g",
-            "description": "1 mandarine"
-          }
+          "portion_usuelle": { "quantite": 80, "unite": "g", "description": "1 mandarine" },
+          "portion_label": "2 mandarines (80g)"
         },
         {
           "id": "fraise",
           "nom": "Fraises",
-          "synonymes": [
-            "fraise"
-          ],
+          "emoji": "🍓",
+          "synonymes": ["fraise"],
           "glucides": 8,
           "ig": 40,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (150g)"
         },
         {
           "id": "framboise",
           "nom": "Framboises",
-          "synonymes": [
-            "framboise"
-          ],
+          "emoji": "🫐",
+          "synonymes": ["framboise"],
           "glucides": 12,
           "ig": 26,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (100g)"
         },
         {
           "id": "raisin",
           "nom": "Raisin",
+          "emoji": "🍇",
           "synonymes": [],
           "glucides": 17,
           "ig": 59,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 grappe"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 grappe" },
+          "portion_label": "1 grappe (100g)"
         },
         {
           "id": "kiwi",
           "nom": "Kiwi",
+          "emoji": "🥝",
           "synonymes": [],
           "glucides": 15,
           "ig": 53,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 kiwi"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 kiwi" },
+          "portion_label": "1 kiwi (100g)"
         },
         {
           "id": "peche",
           "nom": "Pêche",
-          "synonymes": [
-            "nectarine"
-          ],
+          "emoji": "🍑",
+          "synonymes": ["nectarine"],
           "glucides": 10,
           "ig": 42,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 pêche"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 pêche" },
+          "portion_label": "1 pêche (150g)"
         },
         {
           "id": "melon",
           "nom": "Melon",
+          "emoji": "🍈",
           "synonymes": [],
           "glucides": 8,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1 part"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1 part" },
+          "portion_label": "1 part (200g)"
         },
         {
           "id": "pasteque",
           "nom": "Pastèque",
-          "synonymes": [
-            "melon eau"
-          ],
+          "emoji": "🍉",
+          "synonymes": ["melon eau"],
           "glucides": 8,
           "ig": 72,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1 part"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1 part" },
+          "portion_label": "1 part (200g)"
         },
         {
           "id": "abricot",
           "nom": "Abricot",
+          "emoji": "🍑",
           "synonymes": [],
           "glucides": 11,
           "ig": 57,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "2 abricots"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "2 abricots" },
+          "portion_label": "2 abricots (100g)"
         },
         {
           "id": "cerise",
           "nom": "Cerises",
-          "synonymes": [
-            "cerise"
-          ],
+          "emoji": "🍒",
+          "synonymes": ["cerise"],
           "glucides": 16,
           "ig": 63,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (100g)"
         },
         {
           "id": "ananas",
           "nom": "Ananas",
+          "emoji": "🍍",
           "synonymes": [],
           "glucides": 13,
           "ig": 59,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (150g)"
+        },
+        {
+          "id": "mangue",
+          "nom": "Mangue",
+          "emoji": "🥭",
+          "synonymes": [],
+          "glucides": 15,
+          "ig": 55,
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1/2 mangue" },
+          "portion_label": "1/2 mangue (150g)"
+        },
+        {
+          "id": "myrtille",
+          "nom": "Myrtilles",
+          "emoji": "🫐",
+          "synonymes": ["myrtille", "blueberry"],
+          "glucides": 14,
+          "ig": 25,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (100g)"
+        },
+        {
+          "id": "fruits_secs",
+          "nom": "Fruits secs",
+          "emoji": "🥜",
+          "synonymes": ["raisin sec", "abricot sec", "pruneau"],
+          "glucides": 65,
+          "ig": 35,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 poignée" },
+          "portion_label": "1 poignée (30g)"
         }
       ]
     },
@@ -697,285 +583,456 @@
         {
           "id": "tomate",
           "nom": "Tomate",
+          "emoji": "🍅",
           "synonymes": [],
           "glucides": 4,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 tomate"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 tomate" },
+          "portion_label": "1 tomate (100g)"
         },
         {
           "id": "carotte",
           "nom": "Carotte cuite",
-          "synonymes": [
-            "carotte"
-          ],
+          "emoji": "🥕",
+          "synonymes": ["carotte"],
           "glucides": 7,
           "ig": 47,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
         },
         {
           "id": "courgette",
           "nom": "Courgette",
+          "emoji": "🥒",
           "synonymes": [],
           "glucides": 3,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "salade",
           "nom": "Salade verte",
-          "synonymes": [
-            "laitue",
-            "batavia"
-          ],
+          "emoji": "🥗",
+          "synonymes": ["laitue", "batavia"],
           "glucides": 2,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "1 bol"
-          }
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "1 bol" },
+          "portion_label": "1 bol (50g)"
         },
         {
           "id": "haricot_vert",
           "nom": "Haricots verts",
-          "synonymes": [
-            "haricot vert"
-          ],
+          "emoji": "🫛",
+          "synonymes": ["haricot vert"],
           "glucides": 7,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "brocoli",
           "nom": "Brocoli",
+          "emoji": "🥦",
           "synonymes": [],
           "glucides": 7,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "concombre",
           "nom": "Concombre",
+          "emoji": "🥒",
           "synonymes": [],
           "glucides": 3,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1/3 concombre"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1/3 concombre" },
+          "portion_label": "1/3 concombre (100g)"
         },
         {
           "id": "poivron",
           "nom": "Poivron",
-          "synonymes": [
-            "poivron rouge",
-            "poivron vert"
-          ],
+          "emoji": "🫑",
+          "synonymes": ["poivron rouge", "poivron vert"],
           "glucides": 6,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1/2 poivron"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1/2 poivron" },
+          "portion_label": "1/2 poivron (100g)"
         },
         {
           "id": "aubergine",
           "nom": "Aubergine",
+          "emoji": "🍆",
           "synonymes": [],
           "glucides": 6,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "chou_fleur",
           "nom": "Chou-fleur",
-          "synonymes": [
-            "choufleur"
-          ],
+          "emoji": "🥬",
+          "synonymes": ["choufleur"],
           "glucides": 5,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "epinard",
           "nom": "Épinards",
-          "synonymes": [
-            "epinard"
-          ],
+          "emoji": "🥬",
+          "synonymes": ["epinard"],
           "glucides": 4,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (150g)"
         },
         {
           "id": "champignon",
           "nom": "Champignons",
-          "synonymes": [
-            "champignon",
-            "champignon paris"
-          ],
+          "emoji": "🍄",
+          "synonymes": ["champignon", "champignon paris"],
           "glucides": 3,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
+        },
+        {
+          "id": "mais",
+          "nom": "Maïs",
+          "emoji": "🌽",
+          "synonymes": ["mais", "corn"],
+          "glucides": 19,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
+        },
+        {
+          "id": "petits_pois",
+          "nom": "Petits pois",
+          "emoji": "🫛",
+          "synonymes": ["petit pois"],
+          "glucides": 14,
+          "ig": 51,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
+        },
+        {
+          "id": "betterave",
+          "nom": "Betterave",
+          "emoji": "🫀",
+          "synonymes": ["betterave rouge"],
+          "glucides": 10,
+          "ig": 64,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
+        }
+      ]
+    },
+    {
+      "id": "proteines",
+      "nom": "Viandes, Poissons & Œufs",
+      "icon": "🥩",
+      "aliments": [
+        {
+          "id": "jambon_blanc",
+          "nom": "Jambon blanc",
+          "emoji": "🥓",
+          "synonymes": ["jambon", "jambon cuit"],
+          "glucides": 1,
+          "ig": null,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (50g)"
+        },
+        {
+          "id": "jambon_cru",
+          "nom": "Jambon cru",
+          "emoji": "🥓",
+          "synonymes": ["jambon sec", "serrano"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (30g)"
+        },
+        {
+          "id": "saucisson",
+          "nom": "Saucisson sec",
+          "emoji": "🌭",
+          "synonymes": ["saucisson", "salami"],
+          "glucides": 1,
+          "ig": null,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "5 tranches" },
+          "portion_label": "5 tranches (30g)"
+        },
+        {
+          "id": "poulet",
+          "nom": "Poulet rôti",
+          "emoji": "🍗",
+          "synonymes": ["poulet", "blanc poulet"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 120, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (120g)"
+        },
+        {
+          "id": "dinde",
+          "nom": "Dinde",
+          "emoji": "🍗",
+          "synonymes": ["escalope dinde", "blanc dinde"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 120, "unite": "g", "description": "1 escalope" },
+          "portion_label": "1 escalope (120g)"
+        },
+        {
+          "id": "steak_hache",
+          "nom": "Steak haché",
+          "emoji": "🥩",
+          "synonymes": ["steak", "boeuf", "viande"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 steak" },
+          "portion_label": "1 steak (100g)"
+        },
+        {
+          "id": "saucisse",
+          "nom": "Saucisses",
+          "emoji": "🌭",
+          "synonymes": ["merguez", "chipolata", "knack"],
+          "glucides": 1,
+          "ig": null,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "2 saucisses" },
+          "portion_label": "2 saucisses (100g)"
+        },
+        {
+          "id": "saumon",
+          "nom": "Saumon",
+          "emoji": "🐟",
+          "synonymes": ["poisson"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 120, "unite": "g", "description": "1 pavé" },
+          "portion_label": "1 pavé (120g)"
+        },
+        {
+          "id": "saumon_fume",
+          "nom": "Saumon fumé",
+          "emoji": "🐟",
+          "synonymes": ["saumon fume", "poisson"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 60, "unite": "g", "description": "2 tranches" },
+          "portion_label": "2 tranches (60g)"
+        },
+        {
+          "id": "thon",
+          "nom": "Thon",
+          "emoji": "🐟",
+          "synonymes": ["thon boite", "poisson"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 boîte" },
+          "portion_label": "1 boîte (100g)"
+        },
+        {
+          "id": "crevettes",
+          "nom": "Crevettes",
+          "emoji": "🦐",
+          "synonymes": ["crevette", "fruits mer"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (100g)"
+        },
+        {
+          "id": "oeuf_entier",
+          "nom": "Œuf entier",
+          "emoji": "🥚",
+          "synonymes": ["oeuf", "oeufs"],
+          "glucides": 1,
+          "ig": null,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "2 œufs" },
+          "portion_label": "2 œufs"
         }
       ]
     },
     {
       "id": "produits_laitiers",
-      "nom": "Produits Laitiers",
+      "nom": "Produits Laitiers & Fromages",
       "icon": "🥛",
       "aliments": [
         {
           "id": "lait_demi_ecreme",
           "nom": "Lait demi-écrémé",
-          "synonymes": [
-            "lait"
-          ],
+          "emoji": "🥛",
+          "synonymes": ["lait"],
           "glucides": 5,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "ml",
-            "description": "1 verre"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (200ml)"
         },
         {
           "id": "yaourt_nature",
           "nom": "Yaourt nature",
-          "synonymes": [
-            "yaourt",
-            "yogourt"
-          ],
+          "emoji": "🍮",
+          "synonymes": ["yaourt", "yogourt"],
           "glucides": 5,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 125,
-            "unite": "g",
-            "description": "1 pot"
-          }
+          "portion_usuelle": { "quantite": 125, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (125g)"
         },
         {
           "id": "yaourt_fruits",
           "nom": "Yaourt aux fruits",
-          "synonymes": [
-            "yaourt sucre",
-            "yogourt fruits"
-          ],
+          "emoji": "🍮",
+          "synonymes": ["yaourt sucre", "yogourt fruits"],
           "glucides": 17,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 125,
-            "unite": "g",
-            "description": "1 pot"
-          }
+          "portion_usuelle": { "quantite": 125, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (125g)"
         },
         {
           "id": "fromage_blanc",
           "nom": "Fromage blanc",
-          "synonymes": [
-            "faisselle"
-          ],
+          "emoji": "🥛",
+          "synonymes": ["faisselle"],
           "glucides": 4,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 pot"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (100g)"
         },
         {
           "id": "petit_suisse",
           "nom": "Petit-suisse",
-          "synonymes": [
-            "petit suisse"
-          ],
+          "emoji": "🍮",
+          "synonymes": ["petit suisse"],
           "glucides": 5,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 60,
-            "unite": "g",
-            "description": "1 pot"
-          }
+          "portion_usuelle": { "quantite": 60, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (60g)"
         },
         {
           "id": "fromage_pate_dure",
-          "nom": "Fromage à pâte dure",
-          "synonymes": [
-            "emmental",
-            "gruyere",
-            "comte",
-            "fromage"
-          ],
+          "nom": "Emmental / Gruyère",
+          "emoji": "🧀",
+          "synonymes": ["emmental", "gruyere", "comte", "fromage"],
           "glucides": 1,
           "ig": null,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (30g)"
+        },
+        {
+          "id": "camembert",
+          "nom": "Camembert",
+          "emoji": "🧀",
+          "synonymes": ["brie", "coulommiers"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (30g)"
+        },
+        {
+          "id": "chevre",
+          "nom": "Fromage de chèvre",
+          "emoji": "🧀",
+          "synonymes": ["chevre", "buchette"],
+          "glucides": 1,
+          "ig": null,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (30g)"
+        },
+        {
+          "id": "fromage_fondu",
+          "nom": "Fromage fondu",
+          "emoji": "🧀",
+          "synonymes": ["vache qui rit", "kiri", "carre frais"],
+          "glucides": 2,
+          "ig": null,
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (20g)"
+        },
+        {
+          "id": "fromage_tartiner",
+          "nom": "Fromage à tartiner",
+          "emoji": "🧀",
+          "synonymes": ["philadelphia", "saint moret"],
+          "glucides": 3,
+          "ig": null,
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 portion (20g)" },
+          "portion_label": "1 portion (20g)"
         },
         {
           "id": "creme_fraiche",
           "nom": "Crème fraîche",
-          "synonymes": [
-            "creme"
-          ],
+          "emoji": "🥛",
+          "synonymes": ["creme"],
           "glucides": 3,
           "ig": 15,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "1 cuillère"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (30g)"
         },
         {
           "id": "beurre",
           "nom": "Beurre",
+          "emoji": "🧈",
           "synonymes": [],
           "glucides": 1,
           "ig": null,
-          "portion_usuelle": {
-            "quantite": 10,
-            "unite": "g",
-            "description": "1 noisette"
-          }
+          "portion_usuelle": { "quantite": 10, "unite": "g", "description": "1 noisette" },
+          "portion_label": "1 noix (10g)"
+        },
+        {
+          "id": "creme_dessert",
+          "nom": "Crème dessert",
+          "emoji": "🍮",
+          "synonymes": ["creme chocolat", "danette"],
+          "glucides": 18,
+          "ig": 40,
+          "portion_usuelle": { "quantite": 125, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (125g)"
+        },
+        {
+          "id": "flan",
+          "nom": "Flan",
+          "emoji": "🍮",
+          "synonymes": ["flan patissier"],
+          "glucides": 18,
+          "ig": 45,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (100g)"
+        },
+        {
+          "id": "mousse_chocolat",
+          "nom": "Mousse au chocolat",
+          "emoji": "🍫",
+          "synonymes": ["mousse choco"],
+          "glucides": 20,
+          "ig": 40,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (100g)"
+        },
+        {
+          "id": "riz_lait",
+          "nom": "Riz au lait",
+          "emoji": "🍚",
+          "synonymes": ["riz lait"],
+          "glucides": 19,
+          "ig": 50,
+          "portion_usuelle": { "quantite": 125, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (125g)"
+        },
+        {
+          "id": "compote",
+          "nom": "Compote",
+          "emoji": "🍎",
+          "synonymes": ["compote pomme", "compote gourde"],
+          "glucides": 18,
+          "ig": 50,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 pot" },
+          "portion_label": "1 pot (100g)"
         }
       ]
     },
@@ -987,352 +1044,289 @@
         {
           "id": "gateau_chocolat",
           "nom": "Gâteau au chocolat",
-          "synonymes": [
-            "gateau",
-            "moelleux chocolat"
-          ],
+          "emoji": "🍰",
+          "synonymes": ["gateau", "moelleux chocolat"],
           "glucides": 55,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 80,
-            "unite": "g",
-            "description": "1 part"
-          }
+          "portion_usuelle": { "quantite": 80, "unite": "g", "description": "1 part" },
+          "portion_label": "1 part (80g)"
         },
         {
           "id": "cookie",
           "nom": "Cookie",
-          "synonymes": [
-            "cookies",
-            "biscuit pepites"
-          ],
+          "emoji": "🍪",
+          "synonymes": ["cookies", "biscuit pepites"],
           "glucides": 65,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "1 cookie"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 cookie" },
+          "portion_label": "1 cookie (30g)"
         },
         {
           "id": "biscuit_sec",
           "nom": "Biscuits secs",
-          "synonymes": [
-            "petit beurre",
-            "sable",
-            "biscuit"
-          ],
+          "emoji": "🍪",
+          "synonymes": ["petit beurre", "sable", "biscuit"],
           "glucides": 75,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "3 biscuits"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "3 biscuits" },
+          "portion_label": "3 biscuits (30g)"
+        },
+        {
+          "id": "madeleine",
+          "nom": "Madeleines",
+          "emoji": "🧁",
+          "synonymes": ["madeleine"],
+          "glucides": 60,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 40, "unite": "g", "description": "2 madeleines" },
+          "portion_label": "2 madeleines (40g)"
+        },
+        {
+          "id": "quatre_quarts",
+          "nom": "Quatre-quarts",
+          "emoji": "🍰",
+          "synonymes": ["cake sale", "cake sucre"],
+          "glucides": 52,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "1 tranche" },
+          "portion_label": "1 tranche (50g)"
+        },
+        {
+          "id": "barre_cereales",
+          "nom": "Barre de céréales",
+          "emoji": "🍫",
+          "synonymes": ["barre granola"],
+          "glucides": 72,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 25, "unite": "g", "description": "1 barre" },
+          "portion_label": "1 barre (25g)"
         },
         {
           "id": "glace_vanille",
           "nom": "Glace vanille",
-          "synonymes": [
-            "glace",
-            "creme glacee"
-          ],
+          "emoji": "🍦",
+          "synonymes": ["glace", "creme glacee"],
           "glucides": 25,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "2 boules"
-          }
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "2 boules" },
+          "portion_label": "2 boules (100g)"
         },
         {
           "id": "chocolat_noir",
           "nom": "Chocolat noir",
-          "synonymes": [
-            "chocolat"
-          ],
+          "emoji": "🍫",
+          "synonymes": ["chocolat"],
           "glucides": 45,
           "ig": 25,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "3 carrés"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "3 carrés" },
+          "portion_label": "3 carrés (30g)"
         },
         {
           "id": "chocolat_lait",
           "nom": "Chocolat au lait",
-          "synonymes": [
-            "chocolat"
-          ],
+          "emoji": "🍫",
+          "synonymes": ["chocolat"],
           "glucides": 57,
           "ig": 43,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "3 carrés"
-          }
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "3 carrés" },
+          "portion_label": "3 carrés (30g)"
+        },
+        {
+          "id": "pate_tartiner",
+          "nom": "Pâte à tartiner",
+          "emoji": "🍫",
+          "synonymes": ["nutella", "chocolat noisette"],
+          "glucides": 57,
+          "ig": 55,
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (20g)"
         },
         {
           "id": "confiture",
           "nom": "Confiture",
-          "synonymes": [
-            "marmelade",
-            "gelee"
-          ],
+          "emoji": "🍓",
+          "synonymes": ["marmelade", "gelee"],
           "glucides": 60,
           "ig": 65,
-          "portion_usuelle": {
-            "quantite": 20,
-            "unite": "g",
-            "description": "1 cuillère"
-          }
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (20g)"
         },
         {
           "id": "miel",
           "nom": "Miel",
+          "emoji": "🍯",
           "synonymes": [],
           "glucides": 82,
           "ig": 55,
-          "portion_usuelle": {
-            "quantite": 20,
-            "unite": "g",
-            "description": "1 cuillère"
-          }
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (20g)"
         },
         {
           "id": "sucre_blanc",
           "nom": "Sucre blanc",
-          "synonymes": [
-            "sucre"
-          ],
+          "emoji": "🍬",
+          "synonymes": ["sucre"],
           "glucides": 100,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 10,
-            "unite": "g",
-            "description": "2 morceaux"
-          }
-        },
-        {
-          "id": "coca_cola",
-          "nom": "Coca-Cola",
-          "synonymes": [
-            "coca",
-            "soda",
-            "cola"
-          ],
-          "glucides": 11,
-          "ig": 65,
-          "portion_usuelle": {
-            "quantite": 250,
-            "unite": "ml",
-            "description": "1 verre"
-          }
-        },
-        {
-          "id": "jus_orange",
-          "nom": "Jus d'orange",
-          "synonymes": [
-            "jus",
-            "nectar orange"
-          ],
-          "glucides": 10,
-          "ig": 50,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "ml",
-            "description": "1 verre"
-          }
-        },
-        {
-          "id": "sirop_fruit",
-          "nom": "Sirop de fruit",
-          "synonymes": [
-            "sirop",
-            "grenadine",
-            "menthe"
-          ],
-          "glucides": 80,
-          "ig": 65,
-          "portion_usuelle": {
-            "quantite": 20,
-            "unite": "ml",
-            "description": "1 dose"
-          }
-        },
-        {
-          "id": "bonbon",
-          "nom": "Bonbons",
-          "synonymes": [
-            "bonbon",
-            "fraise tagada",
-            "dragibus"
-          ],
-          "glucides": 85,
-          "ig": 70,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "1 petite poignée"
-          }
+          "portion_usuelle": { "quantite": 10, "unite": "g", "description": "2 morceaux" },
+          "portion_label": "2 morceaux (10g)"
         },
         {
           "id": "crepe_nature",
           "nom": "Crêpe nature",
-          "synonymes": [
-            "crepe"
-          ],
+          "emoji": "🥞",
+          "synonymes": ["crepe"],
           "glucides": 35,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 60,
-            "unite": "g",
-            "description": "1 crêpe"
-          }
+          "portion_usuelle": { "quantite": 60, "unite": "g", "description": "1 crêpe" },
+          "portion_label": "1 crêpe (60g)"
         },
         {
           "id": "gaufre",
           "nom": "Gaufre",
-          "synonymes": [
-            "gaufre liege",
-            "gaufre bruxelles"
-          ],
+          "emoji": "🧇",
+          "synonymes": ["gaufre liege", "gaufre bruxelles"],
           "glucides": 50,
           "ig": 75,
-          "portion_usuelle": {
-            "quantite": 80,
-            "unite": "g",
-            "description": "1 gaufre"
-          }
+          "portion_usuelle": { "quantite": 80, "unite": "g", "description": "1 gaufre" },
+          "portion_label": "1 gaufre (80g)"
+        },
+        {
+          "id": "tarte_fruits",
+          "nom": "Tarte aux fruits",
+          "emoji": "🥧",
+          "synonymes": ["tarte", "tarte pomme"],
+          "glucides": 35,
+          "ig": 60,
+          "portion_usuelle": { "quantite": 100, "unite": "g", "description": "1 part" },
+          "portion_label": "1 part (100g)"
+        },
+        {
+          "id": "bonbon",
+          "nom": "Bonbons",
+          "emoji": "🍬",
+          "synonymes": ["bonbon", "fraise tagada", "dragibus"],
+          "glucides": 85,
+          "ig": 70,
+          "portion_usuelle": { "quantite": 30, "unite": "g", "description": "1 petite poignée" },
+          "portion_label": "1 petite poignée (30g)"
         }
       ]
     },
     {
-      "id": "viandes_poissons",
-      "nom": "Viandes, Poissons & Charcuterie",
-      "icon": "🥓",
+      "id": "boissons",
+      "nom": "Boissons",
+      "icon": "🥤",
       "aliments": [
         {
-          "id": "jambon_blanc",
-          "nom": "Jambon blanc",
-          "synonymes": [
-            "jambon",
-            "jambon cuit"
-          ],
-          "glucides": 1,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
-        },
-        {
-          "id": "jambon_cru",
-          "nom": "Jambon cru",
-          "synonymes": [
-            "jambon sec",
-            "serrano"
-          ],
+          "id": "eau",
+          "nom": "Eau",
+          "emoji": "💧",
+          "synonymes": ["eau plate", "eau minerale"],
           "glucides": 0,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "2 tranches"
-          }
+          "ig": 0,
+          "portion_usuelle": { "quantite": 250, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (250ml)"
         },
         {
-          "id": "saucisson",
-          "nom": "Saucisson sec",
-          "synonymes": [
-            "saucisson",
-            "salami"
-          ],
-          "glucides": 1,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 30,
-            "unite": "g",
-            "description": "5 tranches"
-          }
+          "id": "coca_cola",
+          "nom": "Coca-Cola",
+          "emoji": "🥤",
+          "synonymes": ["coca", "soda", "cola"],
+          "glucides": 11,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 250, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (250ml)"
         },
         {
-          "id": "poulet",
-          "nom": "Poulet rôti",
-          "synonymes": [
-            "poulet",
-            "blanc poulet"
-          ],
+          "id": "jus_orange",
+          "nom": "Jus d'orange",
+          "emoji": "🧃",
+          "synonymes": ["jus", "nectar orange"],
+          "glucides": 10,
+          "ig": 50,
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (200ml)"
+        },
+        {
+          "id": "jus_pomme",
+          "nom": "Jus de pomme",
+          "emoji": "🧃",
+          "synonymes": ["jus pomme"],
+          "glucides": 11,
+          "ig": 44,
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (200ml)"
+        },
+        {
+          "id": "sirop_fruit",
+          "nom": "Sirop de fruit",
+          "emoji": "🥤",
+          "synonymes": ["sirop", "grenadine", "menthe"],
+          "glucides": 80,
+          "ig": 65,
+          "portion_usuelle": { "quantite": 20, "unite": "ml", "description": "1 dose" },
+          "portion_label": "1 dose (20ml)"
+        },
+        {
+          "id": "limonade",
+          "nom": "Limonade",
+          "emoji": "🥤",
+          "synonymes": ["limonade", "soda"],
+          "glucides": 9,
+          "ig": 60,
+          "portion_usuelle": { "quantite": 250, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (250ml)"
+        },
+        {
+          "id": "the_glace",
+          "nom": "Thé glacé",
+          "emoji": "🧃",
+          "synonymes": ["ice tea"],
+          "glucides": 5,
+          "ig": 50,
+          "portion_usuelle": { "quantite": 330, "unite": "ml", "description": "1 bouteille" },
+          "portion_label": "1 bouteille (330ml)"
+        },
+        {
+          "id": "lait_boisson",
+          "nom": "Lait (boisson)",
+          "emoji": "🥛",
+          "synonymes": ["lait chaud", "lait froid"],
+          "glucides": 5,
+          "ig": 30,
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 verre" },
+          "portion_label": "1 verre (200ml)"
+        },
+        {
+          "id": "chocolat_chaud",
+          "nom": "Chocolat chaud",
+          "emoji": "☕",
+          "synonymes": ["cacao", "poudre cacao"],
+          "glucides": 15,
+          "ig": 55,
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 tasse" },
+          "portion_label": "1 tasse (200ml)"
+        },
+        {
+          "id": "cafe",
+          "nom": "Café",
+          "emoji": "☕",
+          "synonymes": ["expresso", "noisette"],
           "glucides": 0,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 120,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "ig": 0,
+          "portion_usuelle": { "quantite": 100, "unite": "ml", "description": "1 tasse" },
+          "portion_label": "1 tasse"
         },
         {
-          "id": "steak_hache",
-          "nom": "Steak haché",
-          "synonymes": [
-            "steak",
-            "boeuf",
-            "viande"
-          ],
+          "id": "the",
+          "nom": "Thé",
+          "emoji": "🍵",
+          "synonymes": ["the vert", "the noir", "infusion"],
           "glucides": 0,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 steak"
-          }
-        },
-        {
-          "id": "saucisse",
-          "nom": "Saucisses",
-          "synonymes": [
-            "merguez",
-            "chipolata",
-            "knack"
-          ],
-          "glucides": 1,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "2 saucisses"
-          }
-        },
-        {
-          "id": "saumon",
-          "nom": "Saumon",
-          "synonymes": [
-            "poisson"
-          ],
-          "glucides": 0,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 120,
-            "unite": "g",
-            "description": "1 pavé"
-          }
-        },
-        {
-          "id": "thon",
-          "nom": "Thon",
-          "synonymes": [
-            "thon boite",
-            "poisson"
-          ],
-          "glucides": 0,
-          "ig": null,
-          "portion_usuelle": {
-            "quantite": 100,
-            "unite": "g",
-            "description": "1 boîte"
-          }
+          "ig": 0,
+          "portion_usuelle": { "quantite": 200, "unite": "ml", "description": "1 tasse" },
+          "portion_label": "1 tasse"
         }
       ]
     },
@@ -1344,168 +1338,209 @@
         {
           "id": "pizza_margherita",
           "nom": "Pizza Margherita",
-          "synonymes": [
-            "pizza",
-            "pizza tomate mozza"
-          ],
+          "emoji": "🍕",
+          "synonymes": ["pizza", "pizza tomate mozza"],
           "glucides": 30,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1/3 pizza"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1/3 pizza" },
+          "portion_label": "1/3 pizza (200g)"
         },
         {
           "id": "pizza_4_fromages",
           "nom": "Pizza 4 fromages",
-          "synonymes": [
-            "pizza fromage"
-          ],
+          "emoji": "🍕",
+          "synonymes": ["pizza fromage"],
           "glucides": 28,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1/3 pizza"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1/3 pizza" },
+          "portion_label": "1/3 pizza (200g)"
         },
         {
           "id": "lasagnes",
           "nom": "Lasagnes bolognaise",
-          "synonymes": [
-            "lasagne"
-          ],
+          "emoji": "🍝",
+          "synonymes": ["lasagne"],
           "glucides": 15,
           "ig": 55,
-          "portion_usuelle": {
-            "quantite": 250,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 250, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (250g)"
         },
         {
           "id": "quiche_lorraine",
           "nom": "Quiche lorraine",
-          "synonymes": [
-            "quiche"
-          ],
+          "emoji": "🥧",
+          "synonymes": ["quiche"],
           "glucides": 20,
           "ig": 55,
-          "portion_usuelle": {
-            "quantite": 150,
-            "unite": "g",
-            "description": "1 part"
-          }
+          "portion_usuelle": { "quantite": 150, "unite": "g", "description": "1 part" },
+          "portion_label": "1 part (150g)"
         },
         {
           "id": "chili_con_carne",
           "nom": "Chili con carne",
-          "synonymes": [
-            "chili"
-          ],
+          "emoji": "🫘",
+          "synonymes": ["chili"],
           "glucides": 18,
           "ig": 40,
-          "portion_usuelle": {
-            "quantite": 300,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 300, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (300g)"
         },
         {
           "id": "pot_au_feu",
           "nom": "Pot-au-feu",
-          "synonymes": [
-            "pot au feu"
-          ],
+          "emoji": "🍲",
+          "synonymes": ["pot au feu"],
           "glucides": 12,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 350,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 350, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (350g)"
         },
         {
           "id": "couscous",
           "nom": "Couscous",
-          "synonymes": [
-            "couscous royal"
-          ],
+          "emoji": "🍲",
+          "synonymes": ["couscous royal"],
           "glucides": 20,
           "ig": 55,
-          "portion_usuelle": {
-            "quantite": 350,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 350, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (350g)"
         },
         {
           "id": "paella",
           "nom": "Paella",
+          "emoji": "🥘",
           "synonymes": [],
           "glucides": 22,
           "ig": 58,
-          "portion_usuelle": {
-            "quantite": 300,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 300, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (300g)"
         },
         {
           "id": "cassoulet",
           "nom": "Cassoulet",
+          "emoji": "🍲",
           "synonymes": [],
           "glucides": 16,
           "ig": 35,
-          "portion_usuelle": {
-            "quantite": 350,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 350, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (350g)"
         },
         {
           "id": "blanquette_veau",
           "nom": "Blanquette de veau",
-          "synonymes": [
-            "blanquette"
-          ],
+          "emoji": "🍲",
+          "synonymes": ["blanquette"],
           "glucides": 8,
           "ig": 30,
-          "portion_usuelle": {
-            "quantite": 350,
-            "unite": "g",
-            "description": "1 assiette"
-          }
+          "portion_usuelle": { "quantite": 350, "unite": "g", "description": "1 assiette" },
+          "portion_label": "1 assiette (350g)"
         },
         {
           "id": "hachis_parmentier",
           "nom": "Hachis parmentier",
-          "synonymes": [
-            "hachis"
-          ],
+          "emoji": "🍲",
+          "synonymes": ["hachis"],
           "glucides": 12,
           "ig": 60,
-          "portion_usuelle": {
-            "quantite": 250,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 250, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (250g)"
         },
         {
           "id": "gratin_dauphinois",
           "nom": "Gratin dauphinois",
-          "synonymes": [
-            "gratin pomme terre",
-            "gratin"
-          ],
+          "emoji": "🍲",
+          "synonymes": ["gratin pomme terre", "gratin"],
           "glucides": 14,
           "ig": 70,
-          "portion_usuelle": {
-            "quantite": 200,
-            "unite": "g",
-            "description": "1 portion"
-          }
+          "portion_usuelle": { "quantite": 200, "unite": "g", "description": "1 portion" },
+          "portion_label": "1 portion (200g)"
+        },
+        {
+          "id": "soupe_legumes",
+          "nom": "Soupe de légumes",
+          "emoji": "🍜",
+          "synonymes": ["soupe", "potage", "veloute"],
+          "glucides": 8,
+          "ig": 35,
+          "portion_usuelle": { "quantite": 250, "unite": "ml", "description": "1 bol" },
+          "portion_label": "1 bol (250ml)"
+        }
+      ]
+    },
+    {
+      "id": "sauces_condiments",
+      "nom": "Sauces & Condiments",
+      "icon": "🫙",
+      "aliments": [
+        {
+          "id": "ketchup",
+          "nom": "Ketchup",
+          "emoji": "🍅",
+          "synonymes": ["sauce tomate"],
+          "glucides": 27,
+          "ig": 55,
+          "portion_usuelle": { "quantite": 20, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (20g)"
+        },
+        {
+          "id": "moutarde",
+          "nom": "Moutarde",
+          "emoji": "🟡",
+          "synonymes": ["moutarde dijon"],
+          "glucides": 5,
+          "ig": 35,
+          "portion_usuelle": { "quantite": 10, "unite": "g", "description": "1 cuillère à café" },
+          "portion_label": "1 c. à café (10g)"
+        },
+        {
+          "id": "mayonnaise",
+          "nom": "Mayonnaise",
+          "emoji": "🥣",
+          "synonymes": ["mayo"],
+          "glucides": 3,
+          "ig": 35,
+          "portion_usuelle": { "quantite": 15, "unite": "g", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (15g)"
+        },
+        {
+          "id": "sauce_soja",
+          "nom": "Sauce soja",
+          "emoji": "🫙",
+          "synonymes": ["soja", "tamari"],
+          "glucides": 7,
+          "ig": 20,
+          "portion_usuelle": { "quantite": 15, "unite": "ml", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (15ml)"
+        },
+        {
+          "id": "vinaigrette",
+          "nom": "Vinaigrette",
+          "emoji": "🫙",
+          "synonymes": ["sauce salade", "huile vinaigre"],
+          "glucides": 3,
+          "ig": 15,
+          "portion_usuelle": { "quantite": 15, "unite": "ml", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (15ml)"
+        },
+        {
+          "id": "huile_olive",
+          "nom": "Huile d'olive",
+          "emoji": "🫒",
+          "synonymes": ["huile"],
+          "glucides": 0,
+          "ig": null,
+          "portion_usuelle": { "quantite": 10, "unite": "ml", "description": "1 cuillère" },
+          "portion_label": "1 cuillère (10ml)"
+        },
+        {
+          "id": "sauce_tomate",
+          "nom": "Sauce tomate",
+          "emoji": "🍅",
+          "synonymes": ["coulis tomate", "passata"],
+          "glucides": 8,
+          "ig": 35,
+          "portion_usuelle": { "quantite": 50, "unite": "g", "description": "2 cuillères" },
+          "portion_label": "2 cuillères (50g)"
         }
       ]
     }

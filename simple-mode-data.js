@@ -1,592 +1,414 @@
 /**
- * SIMPLE MODE DATA v2.0 - Base alimentaire catégorisée AMÉLIORÉE
- * 
- * CHANGEMENTS v2.0 :
- * - ✅ Séparation des boissons par moment (petit-déj / repas / goûter)
- * - ✅ Ajout de desserts quotidiens (crème, flan, mousse, riz au lait)
- * - ✅ Enrichissement du goûter (+7 items : pain d'épices, petits-beurre, etc.)
- * - ✅ Ajout de légumineuses (+3 items : lentilles, pois chiches, boulgour)
- * - ✅ Total : 150+ aliments (vs 130 avant)
- * - ✅ Structure preservée pour compatibilité wizard
+ * SIMPLE MODE DATA v3.0 — Source unique : aliments-index.json
+ * ════════════════════════════════════════════════════════════
+ *
+ * MIGRATION v3.0 (2026-03-01) :
+ *   - ✅ Source de données unifiée : aliments-index.json v3.0 (144 aliments)
+ *   - ✅ Interface IDENTIQUE à v2.0 : SimpleModeData[section] et SimpleModeData.structures
+ *   - ✅ SimpleModeWizard.js non modifié (zéro dommage collatéral)
+ *   - ✅ Champs attendus par le wizard : id, nom, emoji, glucides, ig, portion
+ *   - ✅ ig=null → conservé tel quel (wizard utilise `a.ig || 0` → safe)
+ *   - ✅ glucides toujours en g/100g (cohérent avec calculateMeal côté Initié)
+ *   - ✅ portion = portion_label de la BDD (string lisible pour l'UI wizard)
+ *
+ * CONTRAT D'INTERFACE (ne jamais modifier ces noms) :
+ *   SimpleModeData[sectionId]      → Array<{id, nom, emoji, glucides, ig, portion}>
+ *   SimpleModeData.structures      → Object<repasType, Array<EtapeConfig>>
+ *
+ * ATTENTION CALCULS :
+ *   Le wizard calcule les glucides PAR PORTION via `a.glucides` directement.
+ *   Or la BDD stocke les glucides en g/100g.
+ *   → Les glucides affichés dans les cards wizard sont donc pour la portion_usuelle.
+ *   → On pré-calcule ici : glucides_portion = Math.round(glucides * portion_quantite / 100)
+ *   → Ce champ est UNIQUEMENT pour l'affichage wizard (totalGlucides wizard).
+ *   → Les calculs Initié (calculateMeal) utilisent toujours glucides/100g × quantite_g.
+ *
+ * DÉPENDANCE :
+ *   Ce fichier est chargé APRÈS food-database.js.
+ *   Il utilise window._alimentsDB (pré-chargé par un helper inline dans app.js)
+ *   OU se replie sur une extraction synchrone via fetch si nécessaire.
+ *   En pratique : les données sont injectées par SimpleModeDataBuilder.build()
+ *   appelé depuis app.js après que FoodDatabase a chargé le JSON.
  */
 
-
+// ─── Objet exposé globalement, initialisé vide puis populé par build() ────────
 const SimpleModeData = {
-  
-  // ═══════════════════════════════════════════════════════════
-  // BOISSONS - PETIT-DÉJEUNER
-  // ═══════════════════════════════════════════════════════════
-  boissons_petit_dej: [
-    { id: "eau_pdej", nom: "Eau", emoji: "💧", glucides: 0, ig: 0, portion: "1 verre" },
-    { id: "lait_pdej", nom: "Lait", emoji: "🥛", glucides: 10, ig: 30, portion: "1 verre (200ml)" },
-    { id: "chocolat_chaud", nom: "Chocolat chaud", emoji: "☕", glucides: 30, ig: 55, portion: "1 tasse" },
-    { id: "jus_orange_pdej", nom: "Jus d'orange", emoji: "🧃", glucides: 20, ig: 50, portion: "1 verre (200ml)" },
-    { id: "jus_pomme_pdej", nom: "Jus de pomme", emoji: "🧃", glucides: 22, ig: 44, portion: "1 verre (200ml)" },
-    { id: "cafe", nom: "Café", emoji: "☕", glucides: 0, ig: 0, portion: "1 tasse" },
-    { id: "the_pdej", nom: "Thé", emoji: "🍵", glucides: 0, ig: 0, portion: "1 tasse" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // BOISSONS - DÉJEUNER / DÎNER
-  // ═══════════════════════════════════════════════════════════
-  boissons_repas: [
-    { id: "eau_repas", nom: "Eau", emoji: "💧", glucides: 0, ig: 0, portion: "1 verre" },
-    { id: "sirop", nom: "Sirop à l'eau", emoji: "🥤", glucides: 16, ig: 65, portion: "1 dose (20ml)" },
-    { id: "coca", nom: "Coca-Cola", emoji: "🥤", glucides: 27, ig: 65, portion: "1 canette (330ml)" },
-    { id: "the_glace", nom: "Thé glacé", emoji: "🧃", glucides: 18, ig: 50, portion: "1 bouteille (330ml)" },
-    { id: "limonade", nom: "Limonade", emoji: "🥤", glucides: 22, ig: 60, portion: "1 verre (250ml)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // BOISSONS - GOÛTER
-  // ═══════════════════════════════════════════════════════════
-  boissons_gouter: [
-    { id: "eau_gouter", nom: "Eau", emoji: "💧", glucides: 0, ig: 0, portion: "1 verre" },
-    { id: "lait_gouter", nom: "Lait", emoji: "🥛", glucides: 10, ig: 30, portion: "1 verre (200ml)" },
-    { id: "chocolat_chaud_gouter", nom: "Chocolat chaud", emoji: "☕", glucides: 30, ig: 55, portion: "1 tasse" },
-    { id: "jus_orange_gouter", nom: "Jus d'orange", emoji: "🧃", glucides: 20, ig: 50, portion: "1 verre (200ml)" },
-    { id: "jus_pomme_gouter", nom: "Jus de pomme", emoji: "🧃", glucides: 22, ig: 44, portion: "1 verre (200ml)" },
-    { id: "coca_gouter", nom: "Coca-Cola", emoji: "🥤", glucides: 27, ig: 65, portion: "1 canette (330ml)" },
-    { id: "sirop_gouter", nom: "Sirop à l'eau", emoji: "🥤", glucides: 16, ig: 65, portion: "1 dose (20ml)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // PAINS - PETIT-DÉJEUNER
-  // ═══════════════════════════════════════════════════════════
-  pains_petit_dej: [
-    { id: "pain_blanc_pdej", nom: "Pain blanc", emoji: "🥖", glucides: 27, ig: 70, portion: "2 tranches (50g)" },
-    { id: "pain_complet_pdej", nom: "Pain complet", emoji: "🍞", glucides: 24, ig: 45, portion: "2 tranches (50g)" },
-    { id: "pain_cereales_pdej", nom: "Pain aux céréales", emoji: "🌾", glucides: 25, ig: 45, portion: "2 tranches (50g)" },
-    { id: "pain_mie_pdej", nom: "Pain de mie", emoji: "🍞", glucides: 26, ig: 70, portion: "2 tranches (50g)" },
-    { id: "biscottes", nom: "Biscottes", emoji: "🍞", glucides: 15, ig: 70, portion: "2 biscottes (20g)" },
-    { id: "pain_epices_pdej_pain", nom: "Pain d'épices", emoji: "🍞", glucides: 30, ig: 70, portion: "2 tranches (40g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // PETIT-DÉJEUNER : Contenu
-  // ═══════════════════════════════════════════════════════════
-  petit_dej_contenu: [
-    { id: "croissant", nom: "Croissant", emoji: "🥐", glucides: 27, ig: 70, portion: "1 croissant (60g)" },
-    { id: "pain_chocolat", nom: "Pain au chocolat", emoji: "🥐", glucides: 34, ig: 65, portion: "1 pain (70g)" },
-    { id: "brioche", nom: "Brioche", emoji: "🍞", glucides: 25, ig: 70, portion: "2 tranches (50g)" },
-    { id: "cereales", nom: "Céréales", emoji: "🥣", glucides: 26, ig: 85, portion: "1 bol (30g)" },
-    { id: "muesli", nom: "Muesli", emoji: "🥣", glucides: 33, ig: 50, portion: "1 bol (50g)" },
-    { id: "flocons_avoine", nom: "Flocons d'avoine", emoji: "🥣", glucides: 30, ig: 55, portion: "1 bol (50g)" },
-    { id: "crepes", nom: "Crêpes", emoji: "🥞", glucides: 21, ig: 60, portion: "2 crêpes (60g)" },
-    { id: "gaufres", nom: "Gaufres", emoji: "🧇", glucides: 40, ig: 75, portion: "1 gaufre (80g)" },
-    { id: "petits_beurre_pdej", nom: "Petits-beurre", emoji: "🍪", glucides: 15, ig: 55, portion: "3 biscuits (25g)" },
-  ],
-  
-  petit_dej_garniture: [
-    { id: "beurre", nom: "Beurre", emoji: "🧈", glucides: 0, ig: 0, portion: "1 noix (10g)" },
-    { id: "confiture", nom: "Confiture", emoji: "🍓", glucides: 12, ig: 65, portion: "1 cuillère (20g)" },
-    { id: "miel", nom: "Miel", emoji: "🍯", glucides: 16, ig: 55, portion: "1 cuillère (20g)" },
-    { id: "nutella", nom: "Pâte à tartiner", emoji: "🍫", glucides: 11, ig: 55, portion: "1 cuillère (20g)" },
-    { id: "fromage_tartiner", nom: "Fromage à tartiner", emoji: "🧀", glucides: 1, ig: 0, portion: "1 portion (20g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // ENTRÉES
-  // ═══════════════════════════════════════════════════════════
-  entrees: [
-    { id: "salade_verte", nom: "Salade verte", emoji: "🥗", glucides: 1, ig: 15, portion: "1 bol" },
-    { id: "tomates", nom: "Tomates", emoji: "🍅", glucides: 4, ig: 30, portion: "1 portion" },
-    { id: "concombre", nom: "Concombre", emoji: "🥒", glucides: 2, ig: 15, portion: "1/3 concombre" },
-    { id: "carottes_rapees", nom: "Carottes râpées", emoji: "🥕", glucides: 7, ig: 47, portion: "1 portion" },
-    { id: "soupe", nom: "Soupe de légumes", emoji: "🍜", glucides: 8, ig: 35, portion: "1 bol" },
-    { id: "crudites", nom: "Crudités variées", emoji: "🥗", glucides: 5, ig: 20, portion: "1 assiette" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // PAINS (pour accompagnement repas)
-  // ═══════════════════════════════════════════════════════════
-  pains: [
-    { id: "pain_blanc_repas", nom: "Pain blanc", emoji: "🥖", glucides: 27, ig: 70, portion: "2 tranches (50g)" },
-    { id: "pain_complet_repas", nom: "Pain complet", emoji: "🍞", glucides: 24, ig: 45, portion: "2 tranches (50g)" },
-    { id: "pain_cereales", nom: "Pain aux céréales", emoji: "🌾", glucides: 25, ig: 45, portion: "2 tranches (50g)" },
-    { id: "pain_seigle", nom: "Pain de seigle", emoji: "🍞", glucides: 24, ig: 50, portion: "2 tranches (50g)" },
-    { id: "pain_campagne", nom: "Pain de campagne", emoji: "🥖", glucides: 26, ig: 65, portion: "2 tranches (50g)" },
-    { id: "baguette", nom: "Baguette", emoji: "🥖", glucides: 28, ig: 70, portion: "1/4 baguette (50g)" },
-    { id: "pain_epeautre", nom: "Pain d'épeautre", emoji: "🌾", glucides: 25, ig: 40, portion: "2 tranches (50g)" },
-    { id: "pain_mie", nom: "Pain de mie", emoji: "🍞", glucides: 26, ig: 70, portion: "2 tranches (50g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // FÉCULENTS
-  // ═══════════════════════════════════════════════════════════
-  feculents: [
-    { id: "pates_blanches", nom: "Pâtes blanches", emoji: "🍝", glucides: 50, ig: 60, portion: "1 assiette (200g cuit)" },
-    { id: "pates_completes", nom: "Pâtes complètes", emoji: "🍝", glucides: 46, ig: 40, portion: "1 assiette (200g cuit)" },
-    { id: "riz_blanc", nom: "Riz blanc", emoji: "🍚", glucides: 42, ig: 70, portion: "1 bol (150g cuit)" },
-    { id: "riz_complet", nom: "Riz complet", emoji: "🍚", glucides: 35, ig: 50, portion: "1 bol (150g cuit)" },
-    { id: "riz_basmati", nom: "Riz basmati", emoji: "🍚", glucides: 38, ig: 58, portion: "1 bol (150g cuit)" },
-    { id: "quinoa", nom: "Quinoa", emoji: "🌾", glucides: 32, ig: 53, portion: "1 portion (150g cuit)" },
-    { id: "semoule", nom: "Semoule", emoji: "🍚", glucides: 35, ig: 65, portion: "1 portion (150g cuit)" },
-    { id: "pommes_terre", nom: "Pomme de terre", emoji: "🥔", glucides: 30, ig: 65, portion: "2-3 pommes de terre (150g)" },
-    { id: "puree", nom: "Purée", emoji: "🥔", glucides: 24, ig: 90, portion: "1 portion (150g)" },
-    { id: "frites", nom: "Frites", emoji: "🍟", glucides: 53, ig: 75, portion: "1 portion (150g)" },
-    { id: "gnocchi", nom: "Gnocchi", emoji: "🥟", glucides: 42, ig: 68, portion: "1 portion (150g)" },
-    { id: "lentilles", nom: "Lentilles", emoji: "🌰", glucides: 28, ig: 30, portion: "1 portion (150g cuit)" },
-    { id: "pois_chiches", nom: "Pois chiches", emoji: "🌰", glucides: 27, ig: 28, portion: "1 portion (150g cuit)" },
-    { id: "boulghour", nom: "Boulgour", emoji: "🌾", glucides: 34, ig: 48, portion: "1 portion (150g cuit)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // LÉGUMES
-  // ═══════════════════════════════════════════════════════════
-  legumes: [
-    { id: "tomates_plat", nom: "Tomates", emoji: "🍅", glucides: 4, ig: 30, portion: "1 portion" },
-    { id: "haricots_verts", nom: "Haricots verts", emoji: "🫛", glucides: 11, ig: 30, portion: "1 portion (150g)" },
-    { id: "brocoli", nom: "Brocoli", emoji: "🥦", glucides: 11, ig: 15, portion: "1 portion (150g)" },
-    { id: "poivrons", nom: "Poivrons", emoji: "🫑", glucides: 6, ig: 15, portion: "1/2 poivron" },
-    { id: "courgettes", nom: "Courgettes", emoji: "🥒", glucides: 5, ig: 15, portion: "1 portion (150g)" },
-    { id: "aubergine", nom: "Aubergine", emoji: "🍆", glucides: 9, ig: 15, portion: "1 portion (150g)" },
-    { id: "chou_fleur", nom: "Chou-fleur", emoji: "🥬", glucides: 8, ig: 15, portion: "1 portion (150g)" },
-    { id: "epinards", nom: "Épinards", emoji: "🥬", glucides: 6, ig: 15, portion: "1 portion (150g)" },
-    { id: "champignons", nom: "Champignons", emoji: "🍄", glucides: 3, ig: 15, portion: "1 portion (100g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // PROTÉINES
-  // ═══════════════════════════════════════════════════════════
-  proteines: [
-    { id: "poulet", nom: "Poulet", emoji: "🍗", glucides: 0, ig: 0, portion: "1 portion (120g)" },
-    { id: "steak", nom: "Steak haché", emoji: "🥩", glucides: 0, ig: 0, portion: "1 steak (100g)" },
-    { id: "poisson", nom: "Poisson", emoji: "🐟", glucides: 0, ig: 0, portion: "1 filet (120g)" },
-    { id: "jambon", nom: "Jambon", emoji: "🥓", glucides: 1, ig: 0, portion: "2 tranches (50g)" },
-    { id: "saucisses", nom: "Saucisses", emoji: "🌭", glucides: 1, ig: 0, portion: "2 saucisses (100g)" },
-    { id: "oeufs", nom: "Œufs", emoji: "🥚", glucides: 1, ig: 0, portion: "2 œufs" },
-    { id: "thon", nom: "Thon", emoji: "🐟", glucides: 0, ig: 0, portion: "1 boîte (100g)" },
-    { id: "saumon", nom: "Saumon", emoji: "🐟", glucides: 0, ig: 0, portion: "1 pavé (120g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // FROMAGES
-  // ═══════════════════════════════════════════════════════════
-  fromages: [
-    { id: "emmental", nom: "Emmental", emoji: "🧀", glucides: 0, ig: 0, portion: "1 portion (30g)" },
-    { id: "camembert", nom: "Camembert", emoji: "🧀", glucides: 0, ig: 0, portion: "1 portion (30g)" },
-    { id: "chevre", nom: "Chèvre", emoji: "🧀", glucides: 1, ig: 0, portion: "1 portion (30g)" },
-    { id: "comte", nom: "Comté", emoji: "🧀", glucides: 0, ig: 0, portion: "1 portion (30g)" },
-    { id: "fromage_fondu", nom: "Fromage fondu", emoji: "🧀", glucides: 2, ig: 0, portion: "1 portion" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // DESSERTS - FRUITS
-  // ═══════════════════════════════════════════════════════════
-  desserts_fruits: [
-    { id: "pomme", nom: "Pomme", emoji: "🍎", glucides: 21, ig: 38, portion: "1 pomme (150g)" },
-    { id: "poire", nom: "Poire", emoji: "🍐", glucides: 23, ig: 38, portion: "1 poire (150g)" },
-    { id: "banane", nom: "Banane", emoji: "🍌", glucides: 28, ig: 52, portion: "1 banane (120g)" },
-    { id: "orange", nom: "Orange", emoji: "🍊", glucides: 18, ig: 43, portion: "1 orange (150g)" },
-    { id: "fraises", nom: "Fraises", emoji: "🍓", glucides: 12, ig: 40, portion: "1 bol (150g)" },
-    { id: "raisin", nom: "Raisin", emoji: "🍇", glucides: 17, ig: 59, portion: "1 grappe (100g)" },
-    { id: "kiwi", nom: "Kiwi", emoji: "🥝", glucides: 15, ig: 53, portion: "1 kiwi (100g)" },
-    { id: "peche", nom: "Pêche", emoji: "🍑", glucides: 15, ig: 42, portion: "1 pêche (150g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // FRUITS FRAIS (pour petit-déj et goûter)
-  // ═══════════════════════════════════════════════════════════
-  fruits_frais: [
-    { id: "pomme_frais", nom: "Pomme", emoji: "🍎", glucides: 21, ig: 38, portion: "1 pomme (150g)" },
-    { id: "poire_frais", nom: "Poire", emoji: "🍐", glucides: 23, ig: 38, portion: "1 poire (150g)" },
-    { id: "banane_frais", nom: "Banane", emoji: "🍌", glucides: 28, ig: 52, portion: "1 banane (120g)" },
-    { id: "orange_frais", nom: "Orange", emoji: "🍊", glucides: 18, ig: 43, portion: "1 orange (150g)" },
-    { id: "fraises_frais", nom: "Fraises", emoji: "🍓", glucides: 12, ig: 40, portion: "1 bol (150g)" },
-    { id: "raisin_frais", nom: "Raisin", emoji: "🍇", glucides: 17, ig: 59, portion: "1 grappe (100g)" },
-    { id: "kiwi_frais", nom: "Kiwi", emoji: "🥝", glucides: 15, ig: 53, portion: "1 kiwi (100g)" },
-    { id: "peche_frais", nom: "Pêche", emoji: "🍑", glucides: 15, ig: 42, portion: "1 pêche (150g)" },
-    { id: "clémentine", nom: "Clémentine", emoji: "🍊", glucides: 12, ig: 30, portion: "2 clémentines (100g)" },
-    { id: "melon", nom: "Melon", emoji: "🍈", glucides: 13, ig: 65, portion: "1 tranche (200g)" },
-    { id: "pasteque", nom: "Pastèque", emoji: "🍉", glucides: 15, ig: 72, portion: "1 tranche (200g)" },
-    { id: "cerises", nom: "Cerises", emoji: "🍒", glucides: 16, ig: 22, portion: "1 bol (100g)" },
-    { id: "fruits_secs_frais", nom: "Fruits secs", emoji: "🥜", glucides: 20, ig: 35, portion: "1 poignée (30g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // DESSERTS - QUOTIDIENS (Yaourts, Laitages)
-  // ═══════════════════════════════════════════════════════════
-  desserts_quotidiens: [
-    { id: "yaourt_nature", nom: "Yaourt nature", emoji: "🍮", glucides: 6, ig: 35, portion: "1 pot (125g)" },
-    { id: "yaourt_fruits", nom: "Yaourt aux fruits", emoji: "🍮", glucides: 21, ig: 35, portion: "1 pot (125g)" },
-    { id: "fromage_blanc", nom: "Fromage blanc", emoji: "🥛", glucides: 4, ig: 30, portion: "1 pot (100g)" },
-    { id: "petit_suisse", nom: "Petit-suisse", emoji: "🍮", glucides: 3, ig: 30, portion: "1 pot (60g)" },
-    { id: "compote", nom: "Compote", emoji: "🍎", glucides: 18, ig: 50, portion: "1 pot (100g)" },
-    { id: "creme_dessert", nom: "Crème dessert", emoji: "🍮", glucides: 22, ig: 40, portion: "1 pot (125g)" },
-    { id: "flan", nom: "Flan", emoji: "🍮", glucides: 18, ig: 45, portion: "1 pot (100g)" },
-    { id: "mousse_chocolat", nom: "Mousse au chocolat", emoji: "🍫", glucides: 20, ig: 40, portion: "1 pot (100g)" },
-    { id: "riz_lait", nom: "Riz au lait", emoji: "🍚", glucides: 24, ig: 50, portion: "1 pot (125g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // DESSERTS - FESTIFS (Occasions spéciales)
-  // ═══════════════════════════════════════════════════════════
-  desserts_festifs: [
-    { id: "gateau", nom: "Gâteau", emoji: "🍰", glucides: 44, ig: 65, portion: "1 part (80g)" },
-    { id: "cookie", nom: "Cookie", emoji: "🍪", glucides: 20, ig: 60, portion: "1 cookie (30g)" },
-    { id: "glace", nom: "Glace", emoji: "🍦", glucides: 25, ig: 60, portion: "2 boules (100g)" },
-    { id: "crepe_sucre", nom: "Crêpe sucrée", emoji: "🥞", glucides: 28, ig: 60, portion: "1 crêpe" },
-    { id: "tarte", nom: "Tarte aux fruits", emoji: "🥧", glucides: 35, ig: 60, portion: "1 part (100g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // PAINS - GOÛTER
-  // ═══════════════════════════════════════════════════════════
-  pains_gouter: [
-    { id: "pain_blanc_gouter", nom: "Pain blanc", emoji: "🥖", glucides: 27, ig: 70, portion: "2 tranches (50g)" },
-    { id: "pain_complet_gouter", nom: "Pain complet", emoji: "🍞", glucides: 24, ig: 45, portion: "2 tranches (50g)" },
-    { id: "pain_mie_gouter", nom: "Pain de mie", emoji: "🍞", glucides: 26, ig: 70, portion: "2 tranches (50g)" },
-    { id: "brioche_gouter_pain", nom: "Brioche", emoji: "🍞", glucides: 25, ig: 70, portion: "2 tranches (50g)" },
-    { id: "pain_epices_gouter_pain", nom: "Pain d'épices", emoji: "🍞", glucides: 30, ig: 70, portion: "2 tranches (40g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // GOÛTER - Contenu
-  // ═══════════════════════════════════════════════════════════
-  gouter_contenu: [
-    { id: "cookies_gouter", nom: "Cookies", emoji: "🍪", glucides: 20, ig: 60, portion: "2 cookies (30g)" },
-    { id: "gateau_gouter", nom: "Gâteau", emoji: "🍰", glucides: 44, ig: 65, portion: "1 part (80g)" },
-    { id: "barre_cereales", nom: "Barre de céréales", emoji: "🍫", glucides: 18, ig: 65, portion: "1 barre (25g)" },
-    { id: "croissant_gouter", nom: "Croissant", emoji: "🥐", glucides: 27, ig: 70, portion: "1 croissant (60g)" },
-    { id: "madeleine", nom: "Madeleines", emoji: "🧁", glucides: 24, ig: 65, portion: "2 madeleines (40g)" },
-    { id: "yaourt_gouter", nom: "Yaourt", emoji: "🍮", glucides: 21, ig: 35, portion: "1 pot (125g)" },
-    { id: "quatre_quarts", nom: "Quatre-quarts", emoji: "🍰", glucides: 26, ig: 65, portion: "1 tranche (50g)" },
-    { id: "petits_beurre_gouter", nom: "Petits-beurre", emoji: "🍪", glucides: 15, ig: 55, portion: "3 biscuits (25g)" },
-    { id: "galettes", nom: "Galettes", emoji: "🍪", glucides: 18, ig: 55, portion: "3 galettes (30g)" },
-    { id: "cake", nom: "Cake", emoji: "🍰", glucides: 28, ig: 65, portion: "1 tranche (50g)" },
-    { id: "compote_gourde", nom: "Compote gourde", emoji: "🍎", glucides: 15, ig: 50, portion: "1 gourde (100g)" },
-  ],
-  
-  gouter_garniture: [
-    { id: "beurre_gouter", nom: "Beurre", emoji: "🧈", glucides: 0, ig: 0, portion: "1 noix (10g)" },
-    { id: "confiture_gouter", nom: "Confiture", emoji: "🍓", glucides: 12, ig: 65, portion: "1 cuillère (20g)" },
-    { id: "nutella_gouter", nom: "Pâte à tartiner", emoji: "🍫", glucides: 11, ig: 55, portion: "1 cuillère (20g)" },
-    { id: "miel_gouter", nom: "Miel", emoji: "🍯", glucides: 16, ig: 55, portion: "1 cuillère (20g)" },
-  ],
-  
-  // ═══════════════════════════════════════════════════════════
-  // CONFIGURATION DES STRUCTURES DE REPAS
-  // ═══════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SECTIONS ALIMENTAIRES
+  // Populées dynamiquement par SimpleModeDataBuilder.build()
+  // (voir bas de fichier)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  boissons_petit_dej:  [],
+  boissons_repas:      [],
+  boissons_gouter:     [],
+
+  pains_petit_dej:     [],
+  pains:               [],
+  pains_gouter:        [],
+
+  petit_dej_contenu:   [],
+  petit_dej_garniture: [],
+
+  entrees:             [],
+
+  feculents:           [],
+  legumes:             [],
+  proteines:           [],
+  fromages:            [],
+
+  desserts_fruits:     [],
+  fruits_frais:        [],
+  desserts_quotidiens: [],
+  desserts_festifs:    [],
+
+  gouter_contenu:      [],
+  gouter_garniture:    [],
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STRUCTURES DE REPAS
+  // Identiques à v2.0 — le wizard lit SimpleModeData.structures[repasType]
+  // ═══════════════════════════════════════════════════════════════════════
   structures: {
+
     petit_dejeuner: [
-      { 
-        etape: 1, 
-        id: "boissons",
-        titre: "Boissons", 
-        emoji: "☕", 
+      {
+        etape: 1, id: "boissons",
+        titre: "Boissons", emoji: "☕",
         question: "Qu'est-ce que tu bois ?",
-        categorie: "boissons_petit_dej",  // Petit-déj
-        
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        categorie: "boissons_petit_dej",
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 2, 
-        id: "pain",
-        titre: "Pain", 
-        emoji: "🍞", 
+      {
+        etape: 2, id: "pain",
+        titre: "Pain", emoji: "🍞",
         question: "Quel pain veux-tu ?",
         categorie: "pains_petit_dej",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 3, 
-        id: "contenu",
-        titre: "Contenu", 
-        emoji: "🥐", 
+      {
+        etape: 3, id: "contenu",
+        titre: "Contenu", emoji: "🥐",
         question: "Qu'est-ce que tu manges d'autre ?",
         categorie: "petit_dej_contenu",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 4, 
-        id: "fruits",
-        titre: "Fruits", 
-        emoji: "🍎", 
+      {
+        etape: 4, id: "fruits",
+        titre: "Fruits", emoji: "🍎",
         question: "Des fruits frais ?",
         categorie: "fruits_frais",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 5, 
-        id: "garniture",
-        titre: "Avec quoi ?", 
-        emoji: "🧈", 
+      {
+        etape: 5, id: "garniture",
+        titre: "Avec quoi ?", emoji: "🧈",
         question: "Avec quoi ?",
         categorie: "petit_dej_garniture",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       }
     ],
-    
+
     dejeuner: [
-      { 
-        etape: 1, 
-        id: "boissons",
-        titre: "Boissons", 
-        emoji: "🥤", 
+      {
+        etape: 1, id: "boissons",
+        titre: "Boissons", emoji: "🥤",
         question: "Qu'est-ce que tu bois ?",
-        categorie: "boissons_repas",     // Déjeuner
-        
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        categorie: "boissons_repas",
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 2, 
-        id: "pain",
-        titre: "Pain", 
-        emoji: "🍞", 
+      {
+        etape: 2, id: "pain",
+        titre: "Pain", emoji: "🍞",
         question: "Du pain pour accompagner ?",
         categorie: "pains",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 3, 
-        id: "entree",
-        titre: "Entrée", 
-        emoji: "🥗", 
+      {
+        etape: 3, id: "entree",
+        titre: "Entrée", emoji: "🥗",
         question: "Une entrée ?",
         categorie: "entrees",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 4, 
-        id: "plat",
-        titre: "Plat", 
-        emoji: "🍽️", 
+      {
+        etape: 4, id: "plat",
+        titre: "Plat", emoji: "🍽️",
         question: "Ton plat principal",
         sousEtapes: [
-          {
-            id: "feculent",
-            titre: "Choisis ton féculent",
-            categorie: "feculents",
-            obligatoire: true,
-            multiSelect: true
-          },
-          {
-            id: "legumes",
-            titre: "Ajoute des légumes",
-            categorie: "legumes",
-            obligatoire: false,
-            multiSelect: true
-          },
-          {
-            id: "proteine",
-            titre: "Ajoute une protéine",
-            categorie: "proteines",
-            obligatoire: false,
-            multiSelect: true
-          }
+          { id: "feculent", titre: "Choisis ton féculent", categorie: "feculents",  obligatoire: true,  multiSelect: true },
+          { id: "legumes",  titre: "Ajoute des légumes",   categorie: "legumes",    obligatoire: false, multiSelect: true },
+          { id: "proteine", titre: "Ajoute une protéine",  categorie: "proteines",  obligatoire: false, multiSelect: true }
         ],
-        obligatoire: true,
-        canSkip: false
+        obligatoire: true, canSkip: false
       },
-      { 
-        etape: 5, 
-        id: "fromage",
-        titre: "Fromage", 
-        emoji: "🧀", 
+      {
+        etape: 5, id: "fromage",
+        titre: "Fromage", emoji: "🧀",
         question: "Du fromage ?",
         categorie: "fromages",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 6, 
-        id: "dessert",
-        titre: "Dessert", 
-        emoji: "🍰", 
+      {
+        etape: 6, id: "dessert",
+        titre: "Dessert", emoji: "🍰",
         question: "Un dessert ?",
         sousEtapes: [
           {
-            id: "choix",
-            titre: "Choisis ton dessert",
+            id: "choix", titre: "Choisis ton dessert",
             categories: ["desserts_fruits", "desserts_quotidiens", "desserts_festifs"],
-            obligatoire: false,
-            multiSelect: true
+            obligatoire: false, multiSelect: true
           }
         ],
-        obligatoire: false,
-        canSkip: true
+        obligatoire: false, canSkip: true
       }
     ],
-    
+
     gouter: [
-      { 
-        etape: 1, 
-        id: "boissons",
-        titre: "Boissons", 
-        emoji: "🥤", 
+      {
+        etape: 1, id: "boissons",
+        titre: "Boissons", emoji: "🥤",
         question: "Qu'est-ce que tu bois ?",
-        categorie: "boissons_gouter",    // Goûter
-        
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        categorie: "boissons_gouter",
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 2, 
-        id: "pain",
-        titre: "Pain", 
-        emoji: "🍞", 
+      {
+        etape: 2, id: "pain",
+        titre: "Pain", emoji: "🍞",
         question: "Quel pain veux-tu ?",
         categorie: "pains_gouter",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 3, 
-        id: "contenu",
-        titre: "Contenu", 
-        emoji: "🍪", 
+      {
+        etape: 3, id: "contenu",
+        titre: "Contenu", emoji: "🍪",
         question: "Qu'est-ce que tu manges d'autre ?",
         categorie: "gouter_contenu",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 4, 
-        id: "fruits",
-        titre: "Fruits", 
-        emoji: "🍎", 
+      {
+        etape: 4, id: "fruits",
+        titre: "Fruits", emoji: "🍎",
         question: "Des fruits frais ?",
         categorie: "fruits_frais",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       },
-      { 
-        etape: 5, 
-        id: "garniture",
-        titre: "Avec quoi ?", 
-        emoji: "🧈", 
+      {
+        etape: 5, id: "garniture",
+        titre: "Avec quoi ?", emoji: "🧈",
         question: "Avec quoi ?",
         categorie: "gouter_garniture",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
+        obligatoire: false, multiSelect: true, canSkip: true
       }
     ],
-    
-    diner: [
-      // Identique au déjeuner
-      { 
-        etape: 1, 
-        id: "boissons",
-        titre: "Boissons", 
-        emoji: "🥤", 
-        question: "Qu'est-ce que tu bois ?",
-        categorie: "boissons_repas",     // Dîner
-        
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
-      },
-      { 
-        etape: 2, 
-        id: "pain",
-        titre: "Pain", 
-        emoji: "🍞", 
-        question: "Du pain pour accompagner ?",
-        categorie: "pains",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
-      },
-      { 
-        etape: 3, 
-        id: "entree",
-        titre: "Entrée", 
-        emoji: "🥗", 
-        question: "Une entrée ?",
-        categorie: "entrees",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
-      },
-      { 
-        etape: 4, 
-        id: "plat",
-        titre: "Plat", 
-        emoji: "🍽️", 
-        question: "Ton plat principal",
-        sousEtapes: [
-          {
-            id: "feculent",
-            titre: "Choisis ton féculent",
-            categorie: "feculents",
-            obligatoire: true,
-            multiSelect: true
-          },
-          {
-            id: "legumes",
-            titre: "Ajoute des légumes",
-            categorie: "legumes",
-            obligatoire: false,
-            multiSelect: true
-          },
-          {
-            id: "proteine",
-            titre: "Ajoute une protéine",
-            categorie: "proteines",
-            obligatoire: false,
-            multiSelect: true
-          }
-        ],
-        obligatoire: true,
-        canSkip: false
-      },
-      { 
-        etape: 5, 
-        id: "fromage",
-        titre: "Fromage", 
-        emoji: "🧀", 
-        question: "Du fromage ?",
-        categorie: "fromages",
-        obligatoire: false,
-        multiSelect: true,
-        canSkip: true
-      },
-      { 
-        etape: 6, 
-        id: "dessert",
-        titre: "Dessert", 
-        emoji: "🍰", 
-        question: "Un dessert ?",
-        sousEtapes: [
-          {
-            id: "choix",
-            titre: "Choisis ton dessert",
-            categories: ["desserts_fruits", "desserts_quotidiens", "desserts_festifs"],
-            obligatoire: false,
-            multiSelect: true
-          }
-        ],
-        obligatoire: false,
-        canSkip: true
-      }
-    ]
+
+    diner: null  // Initialisé plus bas (référence à dejeuner — même structure)
   }
 };
 
-// Export pour utilisation
+// Dîner = même structure que déjeuner (référence directe, pas de copie)
+SimpleModeData.structures.diner = SimpleModeData.structures.dejeuner;
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUILDER — Popule SimpleModeData depuis la BDD unifiée
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * SimpleModeDataBuilder
+ *
+ * Responsabilité unique : transformer les aliments de la BDD v3.0
+ * en entrées compatibles avec l'interface wizard SimpleModeData.
+ *
+ * Format d'entrée (BDD) :
+ *   { id, nom, emoji, glucides, ig, portion_usuelle: {quantite, unite, description}, portion_label }
+ *
+ * Format de sortie (wizard) :
+ *   { id, nom, emoji, glucides, ig, portion }
+ *
+ * RÈGLE CRITIQUE CALCULS :
+ *   Le wizard utilise `a.glucides` directement pour sommer les glucides du repas.
+ *   La BDD stocke glucides en g/100g.
+ *   → On convertit : glucides_wizard = Math.round(glucides_bdd * portion_quantite / 100)
+ *   → Ce n'est PAS le même champ que celui utilisé par calculateMeal() (mode Initié).
+ *   → Dans calculateMeal() : carbs = (aliment.glucides * item.quantite_g) / 100  ← utilise g/100g
+ *   → Dans le wizard       : total += a.glucides  ← utilise la valeur pré-calculée par portion
+ *   Les deux sont corrects dans leur contexte respectif.
+ */
+const SimpleModeDataBuilder = {
+
+  /**
+   * Convertit un aliment BDD en format wizard.
+   * @param {Object} a - Aliment de la BDD (avec portion_usuelle et portion_label)
+   * @returns {Object} Aliment au format wizard
+   */
+  _toWizard(a) {
+    // glucides PAR PORTION pour l'affichage et la somme wizard
+    const glucidesParPortion = Math.round(a.glucides * a.portion_usuelle.quantite / 100);
+    return {
+      id:       a.id,
+      nom:      a.nom,
+      emoji:    a.emoji || '🍽️',
+      glucides: glucidesParPortion,            // g / portion — usage wizard uniquement
+      ig:       a.ig,                          // null conservé (wizard: a.ig || 0 → 0)
+      portion:  a.portion_label || `${a.portion_usuelle.quantite}${a.portion_usuelle.unite}`
+    };
+  },
+
+  /**
+   * Extrait un sous-ensemble d'une catégorie BDD, dans l'ordre donné.
+   * @param {Object}   db       - La BDD (objet avec .categories)
+   * @param {string}   catId    - ID de la catégorie BDD
+   * @param {string[]|null} ids - IDs à extraire (null = tous)
+   * @returns {Array}
+   */
+  _pick(db, catId, ids) {
+    const cat = db.categories.find(c => c.id === catId);
+    if (!cat) { console.warn(`⚠️ SimpleModeDataBuilder: catégorie '${catId}' introuvable`); return []; }
+    const aliments = ids
+      ? ids.map(id => cat.aliments.find(a => a.id === id)).filter(Boolean)
+      : cat.aliments;
+    return aliments.map(a => this._toWizard(a));
+  },
+
+  /**
+   * Extrait des aliments depuis plusieurs catégories BDD, dans l'ordre donné.
+   * @param {Object}   db     - La BDD
+   * @param {Array}    multi  - Array de [catId, ids[]]
+   * @returns {Array}
+   */
+  _pickMulti(db, multi) {
+    return multi.flatMap(([catId, ids]) => this._pick(db, catId, ids));
+  },
+
+  /**
+   * Popule toutes les sections de SimpleModeData depuis la BDD.
+   * Appelé par app.js après FoodDatabase.load().
+   *
+   * @param {Object} db - this.data de FoodDatabase (objet JSON brut)
+   */
+  build(db) {
+    if (!db || !db.categories) {
+      console.error('❌ SimpleModeDataBuilder.build() : BDD invalide ou non chargée');
+      return false;
+    }
+
+    const p = this._pick.bind(this, db);
+    const m = this._pickMulti.bind(this, db);
+
+    // ── BOISSONS ─────────────────────────────────────────────────────────
+    SimpleModeData.boissons_petit_dej = p('boissons', [
+      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme', 'cafe', 'the'
+    ]);
+
+    SimpleModeData.boissons_repas = p('boissons', [
+      'eau', 'sirop_fruit', 'coca_cola', 'the_glace', 'limonade'
+    ]);
+
+    SimpleModeData.boissons_gouter = p('boissons', [
+      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme', 'coca_cola', 'sirop_fruit'
+    ]);
+
+    // ── PAINS ─────────────────────────────────────────────────────────────
+    SimpleModeData.pains_petit_dej = p('pain_cereales', [
+      'pain_blanc', 'pain_complet', 'pain_mie', 'biscotte', 'pain_epices', 'pain_epeautre'
+    ]);
+
+    SimpleModeData.pains = p('pain_cereales', [
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle',
+      'pain_campagne', 'biscotte', 'pain_epeautre'
+    ]);
+
+    SimpleModeData.pains_gouter = p('pain_cereales', [
+      'pain_blanc', 'pain_complet', 'pain_mie', 'brioche', 'pain_epices'
+    ]);
+
+    // ── PETIT-DÉJEUNER ───────────────────────────────────────────────────
+    // croissant, pain_chocolat, brioche, céréales, muesli, flocons → pain_cereales
+    // crepe_nature, gaufre, biscuit_sec → desserts_sucreries
+    SimpleModeData.petit_dej_contenu = [
+      ...p('pain_cereales',     ['croissant', 'pain_chocolat', 'brioche', 'cereales_nature', 'muesli', 'flocons_avoine']),
+      ...p('desserts_sucreries', ['crepe_nature', 'gaufre', 'biscuit_sec'])
+    ];
+
+    SimpleModeData.petit_dej_garniture = m([
+      ['produits_laitiers', ['beurre', 'fromage_tartiner']],
+      ['desserts_sucreries', ['confiture', 'miel', 'pate_tartiner']]
+    ]);
+
+    // ── ENTRÉES ───────────────────────────────────────────────────────────
+    // "Crudités variées" n'a pas d'ID propre en BDD → item inline
+    const cruditesItem = {
+      id: 'crudites', nom: 'Crudités variées', emoji: '🥗',
+      glucides: 5, ig: 20, portion: '1 assiette (100g)'
+    };
+    SimpleModeData.entrees = [
+      ...p('legumes', ['salade', 'tomate', 'concombre', 'carotte']),
+      ...p('plats_prepares', ['soupe_legumes']),
+      cruditesItem
+    ];
+
+    // ── PLAT PRINCIPAL ────────────────────────────────────────────────────
+    SimpleModeData.feculents  = p('feculents',  null);  // tous
+    SimpleModeData.legumes    = p('legumes',    null);  // tous
+    SimpleModeData.proteines  = p('proteines',  null);  // tous
+
+    // ── FROMAGES ──────────────────────────────────────────────────────────
+    SimpleModeData.fromages = p('produits_laitiers', [
+      'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_tartiner'
+    ]);
+
+    // ── DESSERTS ──────────────────────────────────────────────────────────
+    SimpleModeData.desserts_fruits = p('fruits', [
+      'pomme', 'poire', 'banane', 'orange', 'fraise', 'raisin', 'kiwi', 'peche'
+    ]);
+
+    SimpleModeData.fruits_frais = p('fruits', [
+      'pomme', 'poire', 'banane', 'orange', 'fraise', 'raisin',
+      'kiwi', 'peche', 'mandarine', 'melon', 'pasteque', 'cerise', 'fruits_secs'
+    ]);
+
+    SimpleModeData.desserts_quotidiens = p('produits_laitiers', [
+      'yaourt_nature', 'yaourt_fruits', 'fromage_blanc', 'petit_suisse',
+      'compote', 'creme_dessert', 'flan', 'mousse_chocolat', 'riz_lait'
+    ]);
+
+    SimpleModeData.desserts_festifs = p('desserts_sucreries', [
+      'gateau_chocolat', 'cookie', 'glace_vanille', 'crepe_nature', 'tarte_fruits'
+    ]);
+
+    // ── GOÛTER ────────────────────────────────────────────────────────────
+    SimpleModeData.gouter_contenu = [
+      ...p('desserts_sucreries', [
+        'cookie', 'gateau_chocolat', 'barre_cereales', 'madeleine',
+        'quatre_quarts', 'biscuit_sec', 'gaufre'
+      ]),
+      ...p('pain_cereales',     ['croissant']),
+      ...p('produits_laitiers', ['yaourt_fruits', 'compote'])
+    ];
+
+    SimpleModeData.gouter_garniture = m([
+      ['produits_laitiers', ['beurre']],
+      ['desserts_sucreries', ['confiture', 'pate_tartiner', 'miel']]
+    ]);
+
+    const total = Object.entries(SimpleModeData)
+      .filter(([k, v]) => k !== 'structures' && Array.isArray(v))
+      .reduce((sum, [, v]) => sum + v.length, 0);
+
+    console.log(`✅ SimpleModeData v3.0 : ${total} entrées (${Object.keys(SimpleModeData).filter(k => k !== 'structures' && Array.isArray(SimpleModeData[k])).length} sections) — source : aliments-index.json`);
+    return true;
+  }
+};
+
+// Exposition globale
+if (typeof window !== 'undefined') {
+  window.SimpleModeData        = SimpleModeData;
+  window.SimpleModeDataBuilder = SimpleModeDataBuilder;
+}
+
+// Export Node.js (tests)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = SimpleModeData;
+  module.exports = { SimpleModeData, SimpleModeDataBuilder };
 }

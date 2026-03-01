@@ -764,30 +764,57 @@
       display:none !important;
     }
     
+    @keyframes foodTogglePulse {
+      0%, 100% { box-shadow: 0 4px 18px rgba(110,231,255,0.35), 0 0 0 0 rgba(110,231,255,0.45); }
+      50%       { box-shadow: 0 4px 28px rgba(110,231,255,0.6),  0 0 0 8px rgba(110,231,255,0.0); }
+    }
+    @keyframes foodToggleHue {
+      0%   { filter: hue-rotate(0deg)   brightness(1.05); }
+      100% { filter: hue-rotate(360deg) brightness(1.05); }
+    }
     .foodSearchToggle{
       width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, rgba(110,231,255,0.12), rgba(167,139,250,0.10));
-      border: 2px dashed rgba(110,231,255,0.35);
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #3ecfea, #a78bfa);
+      border: none;
       border-radius: 16px;
-      color: var(--text);
+      color: #fff;
+      font-size: 1.12rem;
       font-weight: 900;
+      letter-spacing: 0.03em;
+      text-shadow: 0 0 10px rgba(0,0,0,0.4), 0 0 20px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.5);
       cursor: pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       gap: 10px;
       margin: 12px 0;
-      transition: all 0.2s ease;
+      box-shadow: 0 4px 18px rgba(110,231,255,0.35);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: foodTogglePulse 2.2s ease-in-out infinite;
+    }
+    :root[data-theme="clair"] .foodSearchToggle {
+      background: linear-gradient(135deg, #ff6b6b, #ffa94d, #ffe066, #69db7c, #4dabf7, #748ffc, #da77f2, #ff6b6b);
+      background-size: 200% 200%;
+      animation: foodToggleHue 12s linear infinite;
+      box-shadow: 0 4px 18px rgba(200,100,200,0.35);
+    }
+    .foodSearchToggle .btn-emoji {
+      font-size: 1.9em;
+      line-height: 1;
+      display: inline-block;
     }
     .foodSearchToggle:hover{
-      background: linear-gradient(135deg, rgba(110,231,255,0.18), rgba(167,139,250,0.14));
-      border-color: rgba(110,231,255,0.55);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 26px rgba(110,231,255,0.55);
+      animation: none;
     }
     .foodSearchToggle.active{
-      background: linear-gradient(135deg, rgba(110,231,255,0.22), rgba(167,139,250,0.18));
-      border-style: solid;
-      border-color: rgba(110,231,255,0.65);
+      background: linear-gradient(135deg, #2bb8d4, #8b6fe0);
+      box-shadow: 0 2px 10px rgba(110,231,255,0.25);
+      animation: none;
+      transform: none;
+      filter: none;
     }
     
     #foodSearchPanel{
@@ -2079,7 +2106,7 @@
         type="button"
         aria-expanded="false"
       >
-        🍽️ Composer mon repas
+        <span class="btn-emoji">🍽️</span> Composer mon repas
       </button>
 
       <!-- Panneau de recherche d'aliments -->

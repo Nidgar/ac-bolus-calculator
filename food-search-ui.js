@@ -273,7 +273,7 @@ class FoodSearchUI {
     // Vérifier si déjà dans l'assiette
     const existing = this.myPlate.find(item => item.aliment_id === alimentId);
     if (existing) {
-      this.showNotification(`❌ ${food.nom} est déjà dans ton assiette !`, 'warning');
+      this.showCenteredNotification(`❌ ${food.nom} est déjà dans ton assiette !`, 'warning');
       return;
     }
 

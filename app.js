@@ -1,10 +1,20 @@
 /**
  * app.js — Bootstrap unique AC Bolus
- * @version 1.2.0
+ * @version 1.3.0
+ *
+ * CHANGEMENT v1.3.0 (2026-03-01) :
+ *   - ✅ SimpleModeDataBuilder.build(db.data) appelé après FoodDatabase.load()
+ *     → Simple mode lit maintenant la BDD unifiée aliments-index.json v3.0
+ *   - ✅ SimpleModeWizard initialisé APRÈS build() pour garantir que
+ *     SimpleModeData est populé avant le premier rendu du wizard
+ *   - ✅ FoodSearchUI conserve son init indépendante (async interne inchangée)
+ *   - ✅ Aucun changement sur food-database.js, food-search-ui.js, simple-mode-wizard.js
+ *   - ✅ Aucun impact sur les calculs : calculateMeal() utilise FoodDatabase.data
+ *     (g/100g × quantite_g), le wizard utilise glucides pré-calculés/portion
  *
  * ORDRE DE CHARGEMENT dans calculateur-bolus-final.html (bas du <body>) :
  *   1. storage.js       4. notifications.js   7. food-search-ui.js
- *   2. bolusMath.js     5. food-database.js    8. simple-mode-data.js
+ *   2. bolusMath.js     5. food-database.js    8. simple-mode-data.js    ← v3.0
  *   3. units.js         6. bolus-optimizer.js  9. simple-mode-wizard.js
  *  10. app.js   ← CE FICHIER, en dernier
  */
@@ -111,6 +121,9 @@
   // INITIALISATIONS
   // ══════════════════════════════════════════════════════════════════════════
 
+  // ─── Mode Initié : FoodSearchUI ───────────────────────────────────────────
+  // FoodSearchUI gère lui-même le chargement async de la BDD (FoodDatabase.load).
+  // Son init reste synchrone ici — la BDD est chargée en interne de manière async.
   function initFoodSearchUI() {
     if (window.foodSearchUI) { console.warn("⚠️ FoodSearchUI déjà initialisé — skip"); return; }
     if (typeof FoodSearchUI === "undefined") { console.error("❌ app.js : FoodSearchUI non chargée"); return; }
@@ -133,7 +146,19 @@
     }
   }
 
-  function initSimpleModeWizard() {
+  // ─── Mode Simple : chargement BDD → build() → wizard ──────────────────────
+  /**
+   * Lance le chargement de la BDD unifiée, appelle SimpleModeDataBuilder.build()
+   * puis initialise SimpleModeWizard.
+   *
+   * Séquence garantie :
+   *   FoodDatabase.load() → (async) → SimpleModeDataBuilder.build(db.data) → SimpleModeWizard.init()
+   *
+   * Robustesse :
+   *   - Si SimpleModeDataBuilder est absent (ancienne version), fallback sur l'init directe.
+   *   - Si la BDD échoue à charger, le wizard ne s'initialise pas (état dégradé).
+   */
+  async function initSimpleModeWithDB() {
     if (window.simpleModeWizard) { console.warn("⚠️ SimpleModeWizard déjà initialisé — skip"); return; }
     if (typeof SimpleModeWizard === "undefined") { console.error("❌ app.js : SimpleModeWizard non chargée"); return; }
     if (typeof SimpleModeData   === "undefined") { console.error("❌ app.js : SimpleModeData non chargé");   return; }
@@ -144,20 +169,57 @@
       return;
     }
 
+    // ── Cas v3.0 : SimpleModeDataBuilder disponible → charger BDD et builder ──
+    if (typeof SimpleModeDataBuilder !== "undefined" && typeof FoodDatabase !== "undefined") {
+      try {
+        const db = new FoodDatabase();
+        const success = await db.load();
+
+        if (!success) {
+          console.error("❌ app.js : FoodDatabase.load() échoué — SimpleModeData non populé");
+          // Wizard désactivé (bannière déjà injectée par FoodDatabase._onLoadFail)
+          return;
+        }
+
+        // Partager l'instance DB pour que FoodSearchUI (déjà initialisé) et
+        // SimpleModeDataBuilder utilisent les mêmes données.
+        // Note : FoodSearchUI a sa propre instance DB — c'est intentionnel
+        // (deux modules indépendants, chacun gère son état).
+        const built = SimpleModeDataBuilder.build(db.data);
+        if (!built) {
+          console.error("❌ app.js : SimpleModeDataBuilder.build() échoué");
+          return;
+        }
+
+      } catch (err) {
+        console.error("❌ app.js : erreur lors du chargement BDD pour Simple mode :", err);
+        return;
+      }
+    } else {
+      // ── Fallback v2.x : SimpleModeData déjà populé statiquement ──────────
+      console.log("ℹ️ app.js : SimpleModeDataBuilder absent — SimpleModeData statique v2.x utilisé");
+    }
+
+    // ── Initialisation du wizard (après build garanti) ────────────────────
     try {
       window.simpleModeWizard = new SimpleModeWizard();
       window.simpleModeWizard.init();
-      console.log("✅ SimpleModeWizard initialisé");
+      console.log("✅ SimpleModeWizard initialisé (BDD unifiée v3.0)");
     } catch (err) {
       console.error("❌ Erreur création SimpleModeWizard :", err);
     }
   }
 
   // ─── Bootstrap ────────────────────────────────────────────────────────────
-  function boot() {
-    console.log("🚀 app.js : boot démarré");
+  async function boot() {
+    console.log("🚀 app.js v1.3.0 : boot démarré");
+
+    // FoodSearchUI (mode Initié) — sync, gère son async en interne
     initFoodSearchUI();
-    initSimpleModeWizard();
+
+    // SimpleModeWizard (mode Simple) — async, attend la BDD
+    await initSimpleModeWithDB();
+
     console.log("✅ app.js : boot terminé");
   }
 
