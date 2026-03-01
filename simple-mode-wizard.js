@@ -8,24 +8,25 @@
  */
 const SelectionCounter = {
   _STORAGE_KEY: 'acbolus_food_counts',
-  _cache: null,
 
-  /** Charge (ou recharge) les compteurs depuis localStorage. */
+  /**
+   * Lit toujours depuis localStorage — pas de cache mémoire.
+   * Garantit que les données sont fraîches entre pages et sessions.
+   * (Données ~quelques Ko : la lecture est négligeable en perf.)
+   */
   _load() {
-    if (this._cache) return this._cache;
     try {
       const raw = localStorage.getItem(this._STORAGE_KEY);
-      this._cache = raw ? JSON.parse(raw) : {};
+      return raw ? JSON.parse(raw) : {};
     } catch (_) {
-      this._cache = {};
+      return {};
     }
-    return this._cache;
   },
 
   /** Persiste les compteurs dans localStorage. */
-  _save() {
+  _save(counts) {
     try {
-      localStorage.setItem(this._STORAGE_KEY, JSON.stringify(this._cache));
+      localStorage.setItem(this._STORAGE_KEY, JSON.stringify(counts));
     } catch (e) {
       console.warn('⚠️ SelectionCounter : impossible de sauvegarder', e);
     }
@@ -39,7 +40,7 @@ const SelectionCounter = {
   increment(alimentId) {
     const counts = this._load();
     counts[alimentId] = (counts[alimentId] || 0) + 1;
-    this._save();
+    this._save(counts);
   },
 
   /**
@@ -64,7 +65,6 @@ const SelectionCounter = {
 
   /** Remet tous les compteurs à zéro (utile pour les tests). */
   reset() {
-    this._cache = {};
     try { localStorage.removeItem(this._STORAGE_KEY); } catch (_) {}
     console.log('🔄 SelectionCounter : compteurs remis à zéro');
   }

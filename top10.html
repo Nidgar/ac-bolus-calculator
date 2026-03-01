@@ -742,12 +742,37 @@ const CATEGORIES = [
 let DB = null;  // sera populé par fetch
 
 async function loadDB() {
+  // Résoudre l'URL de façon robuste — même logique que food-database.js
+  // Garantit le bon chemin sur GitHub Pages, file://, et tout sous-dossier
+  let url;
   try {
-    const resp = await fetch('aliments-index.json');
+    url = new URL('aliments-index.json', location.href).href;
+  } catch(_) {
+    url = './aliments-index.json';
+  }
+  // Cache-busting aligné sur la version de la BDD
+  url += (url.includes('?') ? '&' : '?') + 'v=3.3';
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} — ${url}`);
     DB = await resp.json();
+    console.log(`✅ top10 — BDD chargée : ${DB.categories?.length} catégories, v${DB.version}`);
   } catch(e) {
-    console.warn('BDD non chargée — mode dégradé', e);
+    console.error('❌ top10 — BDD non chargée :', e.message, '\nURL tentée :', url);
     DB = { categories: [] };
+    // Afficher un avertissement visible si la BDD est absente
+    const banner = document.getElementById('noDataBanner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <span class="icon">⚠️</span>
+        <h2>Base de données introuvable</h2>
+        <p>Le fichier <code>aliments-index.json</code> n'a pas pu être chargé.<br>
+        Vérifie que ce fichier est bien déployé sur GitHub Pages.<br>
+        <small style="opacity:0.6">URL tentée : ${url}</small></p>
+      `;
+    }
   }
 }
 
