@@ -112,6 +112,7 @@ class SimpleModeWizard {
           case 'recherche-libre':      this.ouvrirRechercheLibre(btn.dataset.etape, btn.dataset.sous || null);       break;
           case 'passer-etape':         this.passerEtape();                                                           break;
           case 'passer-sous-etape':    this.passerSousEtape();                                                       break;
+          case 'recherche-wizard-nav': this.ouvrirRechercheLibre(btn.dataset.etape, btn.dataset.sous || null);       break;
           case 'etape-precedente':     this.etapePrecedente();                                                       break;
           case 'etape-suivante':       this.etapeSuivante();                                                         break;
           case 'sous-etape-precedente':this.sousEtapePrecedente();                                                   break;
@@ -218,28 +219,10 @@ class SimpleModeWizard {
       `;
     });
 
-    html += `
-      <button class="alimentCard alimentCardPlus" data-action="recherche-libre" data-etape="${etape.id}">
-        <div class="alimentEmoji">➕</div>
-        <div class="alimentNom">Autre</div>
-        <div class="alimentGlucides">Rechercher</div>
-      </button>
-    `;
-
-    if (etape.canSkip) {
-      html += `
-        <button class="alimentCard alimentCardNone" data-action="passer-etape">
-          <div class="alimentEmoji">🚫</div>
-          <div class="alimentNom">Aucun</div>
-          <div class="alimentGlucides">Passer</div>
-        </button>
-      `;
-    }
-
     html += `</div>
       <div class="wizardNavigation">
         <button class="btnSecondary" data-action="etape-precedente">← Retour</button>
-        ${etape.canSkip ? `<button class="btnSecondary" data-action="passer-etape">Passer</button>` : ''}
+        <button class="btnSecondary btnRechercher" data-action="recherche-wizard-nav" data-etape="${etape.id}">🔍 Rechercher</button>
         <button class="btnPrimary" data-action="etape-suivante">Suivant →</button>
       </div>
     `;
@@ -300,23 +283,10 @@ class SimpleModeWizard {
       `;
     });
 
-    html += `
-      <button class="alimentCard alimentCardPlus" data-action="recherche-libre" data-etape="${etape.id}" data-sous="${sousEtape.id}">
-        <div class="alimentEmoji">➕</div><div class="alimentNom">Autre</div><div class="alimentGlucides">Rechercher</div>
-      </button>
-    `;
-    if (!sousEtape.obligatoire) {
-      html += `
-        <button class="alimentCard alimentCardNone" data-action="passer-sous-etape">
-          <div class="alimentEmoji">🚫</div><div class="alimentNom">Aucun</div><div class="alimentGlucides">Passer</div>
-        </button>
-      `;
-    }
-
     html += `</div>
       <div class="wizardNavigation">
         <button class="btnSecondary" data-action="sous-etape-precedente">← Retour</button>
-        ${!sousEtape.obligatoire ? `<button class="btnSecondary" data-action="passer-sous-etape">Passer</button>` : ''}
+        <button class="btnSecondary btnRechercher" data-action="recherche-wizard-nav" data-etape="${etape.id}" data-sous="${sousEtape.id}">🔍 Rechercher</button>
         <button class="btnPrimary" data-action="sous-etape-suivante">Suivant →</button>
       </div>
     `;
@@ -473,7 +443,81 @@ class SimpleModeWizard {
   passerSousEtape() { this.sousEtapeSuivante(); }
 
   ouvrirRechercheLibre(etapeId, sousEtapeId = null) {
-    alert('🔍 Recherche libre : Fonctionnalité à venir\n\nPermettra de rechercher dans la base complète des 99 aliments.');
+    // Évite les doublons
+    const existingPopup = document.getElementById('rechercheComingSoonPopup');
+    if (existingPopup) existingPopup.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'rechercheComingSoonPopup';
+    popup.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 20, 60, 0.65);
+      backdrop-filter: blur(6px);
+      animation: fadeInPopup 0.2s ease;
+    `;
+
+    popup.innerHTML = `
+      <style>
+        @keyframes fadeInPopup {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes slideUpPopup {
+          from { opacity: 0; transform: translateY(24px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    }
+        }
+        #rechercheComingSoonCard {
+          animation: slideUpPopup 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+      </style>
+      <div id="rechercheComingSoonCard" style="
+        background: linear-gradient(145deg, #0e4fd6 0%, #1a6fff 50%, #0a3bbf 100%);
+        border: 1.5px solid rgba(110, 180, 255, 0.45);
+        border-radius: 20px;
+        box-shadow: 0 24px 60px rgba(0, 60, 200, 0.5), 0 0 0 1px rgba(255,255,255,0.08) inset;
+        max-width: 360px;
+        width: 100%;
+        padding: 36px 28px 28px;
+        text-align: center;
+        color: #fff;
+        position: relative;
+      ">
+        <div style="font-size: 56px; line-height: 1; margin-bottom: 16px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));">🔍</div>
+        <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(180, 215, 255, 0.85); margin-bottom: 10px;">Fonctionnalité à venir</div>
+        <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 14px; line-height: 1.3;">Recherche dans la base complète</h2>
+        <p style="font-size: 14px; font-weight: 500; line-height: 1.6; color: rgba(200, 230, 255, 0.9); margin: 0 0 28px;">
+          Bientôt, tu pourras rechercher parmi les <strong style="color:#fff;">99 aliments</strong> de la base pour affiner la composition de ton repas.
+        </p>
+        <button id="rechercheComingSoonClose" style="
+          background: rgba(255,255,255,0.18);
+          border: 1.5px solid rgba(255,255,255,0.35);
+          border-radius: 12px;
+          color: #fff;
+          font-size: 15px;
+          font-weight: 800;
+          padding: 12px 32px;
+          cursor: pointer;
+          transition: background 0.15s;
+          width: 100%;
+        ">OK, compris !</button>
+      </div>
+    `;
+
+    // Fermeture via bouton
+    popup.querySelector('#rechercheComingSoonClose').addEventListener('click', () => popup.remove());
+    // Fermeture via clic sur le fond
+    popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+    // Fermeture via Escape
+    const onKey = (e) => { if (e.key === 'Escape') { popup.remove(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(popup);
   }
 
   afficherRecapitulatif() {
@@ -536,9 +580,100 @@ class SimpleModeWizard {
     container.innerHTML = html;
   }
 
+  afficherAlerteAucunGlucide() {
+    const existingPopup = document.getElementById('aucunGlucidePopup');
+    if (existingPopup) existingPopup.remove();
+
+    const isDark = (document.documentElement.dataset.theme !== 'clair');
+
+    // Palette selon le thème
+    const palette = isDark ? {
+      overlay:    'rgba(0, 15, 50, 0.70)',
+      cardBg:     'linear-gradient(150deg, #0a2e8a 0%, #1044cc 55%, #0831a8 100%)',
+      border:     'rgba(80, 150, 255, 0.40)',
+      shadow:     '0 24px 60px rgba(0, 40, 180, 0.55), 0 0 0 1px rgba(255,255,255,0.07) inset',
+      badge:      'rgba(150, 200, 255, 0.80)',
+      text:       '#ffffff',
+      subtext:    'rgba(190, 220, 255, 0.88)',
+      btnBg:      'rgba(255,255,255,0.16)',
+      btnBorder:  'rgba(255,255,255,0.32)',
+    } : {
+      overlay:    'rgba(10, 30, 100, 0.45)',
+      cardBg:     'linear-gradient(150deg, #2563eb 0%, #3b82f6 55%, #1d4ed8 100%)',
+      border:     'rgba(147, 197, 253, 0.60)',
+      shadow:     '0 24px 60px rgba(37, 99, 235, 0.40), 0 0 0 1px rgba(255,255,255,0.20) inset',
+      badge:      'rgba(219, 234, 254, 0.95)',
+      text:       '#ffffff',
+      subtext:    'rgba(239, 246, 255, 0.92)',
+      btnBg:      'rgba(255,255,255,0.22)',
+      btnBorder:  'rgba(255,255,255,0.50)',
+    };
+
+    const popup = document.createElement('div');
+    popup.id = 'aucunGlucidePopup';
+    popup.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: ${palette.overlay};
+      backdrop-filter: blur(6px);
+      animation: fadeInPopup 0.2s ease;
+    `;
+
+    popup.innerHTML = `
+      <style>
+        #aucunGlucidePopup .agCard {
+          animation: slideUpPopup 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+      </style>
+      <div class="agCard" style="
+        background: ${palette.cardBg};
+        border: 1.5px solid ${palette.border};
+        border-radius: 20px;
+        box-shadow: ${palette.shadow};
+        max-width: 360px;
+        width: 100%;
+        padding: 36px 28px 28px;
+        text-align: center;
+        color: ${palette.text};
+        position: relative;
+      ">
+        <div style="font-size: 62px; line-height: 1; margin-bottom: 14px; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));">🍬</div>
+        <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: ${palette.badge}; margin-bottom: 10px;">Repas sans glucides</div>
+        <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 14px; line-height: 1.3; color: ${palette.text};">Aucun glucide détecté !</h2>
+        <p style="font-size: 14px; font-weight: 500; line-height: 1.65; color: ${palette.subtext}; margin: 0 0 28px;">
+          Ton repas ne contient <strong style="color:${palette.text};">aucun glucide</strong>.<br>
+          Sélectionne au moins un aliment sucré ou féculent pour calculer ton bolus.
+        </p>
+        <button id="aucunGlucideClose" style="
+          background: ${palette.btnBg};
+          border: 1.5px solid ${palette.btnBorder};
+          border-radius: 12px;
+          color: ${palette.text};
+          font-size: 15px;
+          font-weight: 800;
+          padding: 12px 32px;
+          cursor: pointer;
+          width: 100%;
+        ">OK, je vais ajouter un aliment</button>
+      </div>
+    `;
+
+    popup.querySelector('#aucunGlucideClose').addEventListener('click', () => popup.remove());
+    popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+    const onKey = (e) => { if (e.key === 'Escape') { popup.remove(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(popup);
+  }
+
   validerRepas() {
     if (this.totalGlucides === 0) {
-      alert('⚠️ Ton repas ne contient aucun glucide !\n\nAjoute au moins un aliment avec des glucides.');
+      this.afficherAlerteAucunGlucide();
       return;
     }
 
