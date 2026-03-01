@@ -1,7 +1,14 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="sombre">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <script>
+    // Init thème immédiat — avant tout rendu CSS — évite le flash
+    (function() {
+      var t = localStorage.getItem('bc_theme') || 'sombre';
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AC Bolus — Top Aliments</title>
   <style>
@@ -1111,15 +1118,17 @@ function render() {
 function getTheme() {
   try { return localStorage.getItem('bc_theme') || 'sombre'; } catch { return 'sombre'; }
 }
+// applyTheme : DOM uniquement, PAS de localStorage — évite la réécriture parasite à l'init
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   document.getElementById('themeBtn').textContent = t === 'sombre' ? '☀️' : '🌙';
-  try { localStorage.setItem('bc_theme', t); } catch {}
 }
 document.getElementById('themeBtn').addEventListener('click', () => {
-  // Lire l'état réel du DOM (pas localStorage) pour éviter la désynchronisation
+  // Lit l'état réel du DOM — jamais localStorage — aucune désynchronisation possible
   const current = document.documentElement.dataset.theme || 'sombre';
-  applyTheme(current === 'sombre' ? 'clair' : 'sombre');
+  const next = current === 'sombre' ? 'clair' : 'sombre';
+  applyTheme(next);
+  try { localStorage.setItem('bc_theme', next); } catch {}  // persisté uniquement au clic
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
