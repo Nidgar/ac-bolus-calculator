@@ -471,6 +471,19 @@ class FoodSearchUI {
 
     const meal = this.db.calculateMeal(this.myPlate);  // MealMetrics brut
 
+    // ── SelectionCounter : incrémenter chaque aliment du plateau une seule fois ──
+    // Même logique que le wizard (comptage au moment de la validation, pas de l'ajout).
+    if (typeof SelectionCounter !== 'undefined') {
+      const seen = new Set();
+      this.myPlate.forEach(item => {
+        if (!seen.has(item.aliment_id)) {
+          SelectionCounter.increment(item.aliment_id);
+          seen.add(item.aliment_id);
+        }
+      });
+      console.log(`📊 SelectionCounter (mode Initié) : ${seen.size} aliment(s) incrémenté(s)`);
+    }
+
     if (this.carbsInput) {
       this.carbsInput.value = Math.round(meal.carbs_g); // arrondi entier pour le champ
       this.carbsInput.dispatchEvent(new Event('input', { bubbles: true }));

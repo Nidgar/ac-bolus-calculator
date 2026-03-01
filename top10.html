@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="sombre">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AC Bolus — Top Aliments</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       VARIABLES & RESET
+    ═══════════════════════════════════════════════════════ */
+    :root {
+      --bg:       #0b1220;
+      --bg2:      #0f1829;
+      --panel:    rgba(255,255,255,0.05);
+      --panel2:   rgba(255,255,255,0.08);
+      --border:   rgba(255,255,255,0.10);
+      --border2:  rgba(255,255,255,0.16);
+      --text:     rgba(255,255,255,0.92);
+      --muted:    rgba(255,255,255,0.48);
+      --accent:   #6ee7ff;
+      --accent2:  #a78bfa;
+      --good:     #34d399;
+      --warn:     #fbbf24;
+      --bad:      #fb7185;
+      --gold:     #fbbf24;
+      --silver:   #94a3b8;
+      --bronze:   #f97316;
+      --radius:   18px;
+      --shadow:   0 20px 60px rgba(0,0,0,0.4);
+      color-scheme: dark;
+    }
+    :root[data-theme="clair"] {
+      --bg:       #f0f2f5;
+      --bg2:      #e8eaed;
+      --panel:    rgba(255,255,255,0.72);
+      --panel2:   rgba(255,255,255,0.88);
+      --border:   rgba(0,0,0,0.10);
+      --border2:  rgba(0,0,0,0.18);
+      --text:     rgba(0,0,0,0.90);
+      --muted:    rgba(0,0,0,0.50);
+      --accent:   #0284c7;
+      --accent2:  #7c3aed;
+      --good:     #059669;
+      --warn:     #d97706;
+      --bad:      #dc2626;
+      --gold:     #d97706;
+      --silver:   #64748b;
+      --bronze:   #ea580c;
+      --shadow:   0 12px 40px rgba(0,0,0,0.12);
+      color-scheme: light;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      background:
+        radial-gradient(1000px 500px at 10% 0%,   rgba(167,139,250,0.18), transparent 60%),
+        radial-gradient(800px  400px at 90% 10%,  rgba(110,231,255,0.14), transparent 60%),
+        var(--bg);
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════ */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,18,32,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    :root[data-theme="clair"] .site-header {
+      background: rgba(240,242,245,0.88);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-back {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: inherit;  /* system-ui */
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 7px 14px;
+      border: 1px solid rgba(110,231,255,0.25);
+      border-radius: 50px;
+      transition: all 0.2s;
+    }
+    .header-back:hover {
+      background: rgba(110,231,255,0.1);
+      border-color: var(--accent);
+    }
+    :root[data-theme="clair"] .header-back {
+      color: var(--accent);
+      border-color: rgba(2,132,199,0.25);
+    }
+
+    .header-title {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-title h1 {
+      font-weight: inherit;  /* system-ui */
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .header-title span {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border2);
+      background: var(--panel2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-icon:hover { background: var(--panel); transform: scale(1.08); }
+
+    .btn-import {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--good);
+      padding: 7px 14px;
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 50px;
+      background: rgba(52,211,153,0.06);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-import:hover {
+      background: rgba(52,211,153,0.14);
+      border-color: var(--good);
+    }
+    .btn-reset {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--bad);
+      padding: 7px 14px;
+      border: 1px solid rgba(251,113,133,0.25);
+      border-radius: 50px;
+      background: rgba(251,113,133,0.06);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reset:hover {
+      background: rgba(251,113,133,0.14);
+      border-color: var(--bad);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════════ */
+    .page-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       BANDEAU TOP GLOBAL
+    ═══════════════════════════════════════════════════════ */
+    .global-section {
+      margin-bottom: 40px;
+    }
+
+    .section-label {
+      font-weight: inherit;  /* system-ui */
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .global-podium {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .podium-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.4s ease both;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .podium-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+    }
+    .podium-card:nth-child(1) { animation-delay: 0.05s; }
+    .podium-card:nth-child(2) { animation-delay: 0.10s; }
+    .podium-card:nth-child(3) { animation-delay: 0.15s; }
+    .podium-card:nth-child(4) { animation-delay: 0.20s; }
+    .podium-card:nth-child(5) { animation-delay: 0.25s; }
+
+    .podium-card.rank-1 {
+      border-color: rgba(251,191,36,0.40);
+      background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04));
+    }
+    .podium-card.rank-2 {
+      border-color: rgba(148,163,184,0.35);
+      background: linear-gradient(135deg, rgba(148,163,184,0.10), rgba(148,163,184,0.03));
+    }
+    .podium-card.rank-3 {
+      border-color: rgba(249,115,22,0.35);
+      background: linear-gradient(135deg, rgba(249,115,22,0.10), rgba(249,115,22,0.03));
+    }
+
+    .podium-medal {
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 8px;
+      display: block;
+      animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    .podium-card:nth-child(1) .podium-medal { animation-delay: 0.3s; }
+    .podium-card:nth-child(2) .podium-medal { animation-delay: 0.35s; }
+    .podium-card:nth-child(3) .podium-medal { animation-delay: 0.4s; }
+
+    .podium-emoji { font-size: 30px; margin-bottom: 8px; display: block; }
+    .podium-nom {
+      font-weight: inherit;  /* system-ui */
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+    .podium-cat {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .podium-count {
+      font-weight: inherit;  /* system-ui */
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    .podium-count-label {
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .podium-rank {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-weight: inherit;  /* system-ui */
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .rank-1 .podium-rank { color: var(--gold); }
+    .rank-2 .podium-rank { color: var(--silver); }
+    .rank-3 .podium-rank { color: var(--bronze); }
+
+    /* ═══════════════════════════════════════════════════════
+       GRILLE CATÉGORIES
+    ═══════════════════════════════════════════════════════ */
+    .cats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       CARD CATÉGORIE
+    ═══════════════════════════════════════════════════════ */
+    .cat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp 0.4s ease both;
+      transition: box-shadow 0.2s;
+    }
+    .cat-card:hover { box-shadow: var(--shadow); }
+
+    .cat-header {
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cat-icon {
+      font-size: 22px;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--panel2);
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+    .cat-name {
+      font-weight: inherit;  /* system-ui */
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .cat-count-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--panel2);
+      padding: 3px 9px;
+      border-radius: 50px;
+    }
+
+    /* Top 3 visible */
+    .top3-list {
+      padding: 12px 0 4px;
+    }
+
+    .top-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      transition: background 0.15s;
+      border-radius: 10px;
+      margin: 2px 6px;
+    }
+    .top-item:hover { background: var(--panel2); }
+
+    .top-item-medal { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+    .top-item-emoji { font-size: 20px; flex-shrink: 0; }
+    .top-item-info  { flex: 1; min-width: 0; }
+    .top-item-nom {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-item-bar-wrap {
+      margin-top: 4px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .top-item-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+    .rank-1-bar { background: linear-gradient(90deg, var(--gold), #fde68a); }
+    .rank-2-bar { background: linear-gradient(90deg, var(--silver), #cbd5e1); }
+    .rank-3-bar { background: linear-gradient(90deg, var(--bronze), #fdba74); }
+    .rank-other-bar { background: var(--accent); opacity: 0.5; }
+
+    .top-item-count {
+      font-weight: inherit;  /* system-ui */
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--accent);
+      flex-shrink: 0;
+      min-width: 28px;
+      text-align: right;
+    }
+
+    /* Accordéon top 4-10 */
+    .accordeon-btn {
+      width: 100%;
+      padding: 10px 16px;
+      background: none;
+      border: none;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .accordeon-btn:hover { color: var(--text); background: var(--panel2); }
+    .accordeon-btn .chevron {
+      transition: transform 0.25s;
+      font-style: normal;
+    }
+    .accordeon-btn.open .chevron { transform: rotate(180deg); }
+
+    .accordeon-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .accordeon-body.open { max-height: 600px; }
+
+    /* ═══════════════════════════════════════════════════════
+       ÉTAT VIDE
+    ═══════════════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 28px 20px;
+      color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    /* ═══════════════════════════════════════════════════════
+       NO DATA GLOBAL
+    ═══════════════════════════════════════════════════════ */
+    .no-data-banner {
+      background: var(--panel);
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .no-data-banner .icon { font-size: 52px; margin-bottom: 14px; display: block; }
+    .no-data-banner h2 {
+      font-weight: inherit;  /* system-ui */
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .no-data-banner p { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 400px; margin: 0 auto; }
+
+    /* ═══════════════════════════════════════════════════════
+       MODAL CONFIRM RESET
+    ═══════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+
+    .modal-card {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      transform: scale(0.94) translateY(12px);
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: var(--shadow);
+    }
+    .modal-overlay.show .modal-card { transform: scale(1) translateY(0); }
+
+    .modal-icon { font-size: 48px; margin-bottom: 14px; display: block; }
+    .modal-card h3 {
+      font-weight: inherit;  /* system-ui */
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .modal-card p { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+    .modal-btns { display: flex; gap: 10px; }
+    .modal-btns button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border2);
+      transition: all 0.18s;
+    }
+    .btn-cancel { background: var(--panel2); color: var(--text); }
+    .btn-cancel:hover { background: var(--panel); }
+    .btn-confirm-reset { background: rgba(251,113,133,0.15); color: var(--bad); border-color: rgba(251,113,133,0.35); }
+    .btn-confirm-reset:hover { background: rgba(251,113,133,0.28); }
+
+    /* ═══════════════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════════════ */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--good);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 22px;
+      border-radius: 50px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 9998;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ═══════════════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.4) rotate(-15deg); }
+      to   { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       STATS BAR
+    ═══════════════════════════════════════════════════════ */
+    .stats-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 100px;
+    }
+    .stat-chip .n {
+      font-weight: inherit;  /* system-ui */
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent);
+    }
+    .stat-chip .l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .cats-grid { grid-template-columns: repeat(2, 1fr); }
+      .global-podium { grid-template-columns: repeat(3, 1fr); }
+      .global-podium .podium-card:nth-child(n+4) { display: none; }
+    }
+    @media (max-width: 600px) {
+      .page-wrap { padding: 20px 14px 0; }
+      .cats-grid { grid-template-columns: 1fr; }
+      .global-podium { grid-template-columns: repeat(3, 1fr); }
+      .global-podium .podium-card:nth-child(n+4) { display: none; }
+      .site-header { padding: 12px 16px; }
+      .header-back span:last-child { display: none; }
+      .btn-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="site-header">
+  <div class="header-left">
+    <a href="calculateur-bolus-final.html" class="header-back">
+      <span>←</span>
+      <span>Retour</span>
+    </a>
+    <div class="header-title">
+      <h1>🏆 Top Aliments</h1>
+      <span id="lastUpdated">Chargement…</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-icon" id="themeBtn" title="Changer le thème">☀️</button>
+    <label class="btn-import" title="Restaurer depuis une sauvegarde JSON">
+      📂 <span class="btn-label">Restaurer</span>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+    </label>
+    <button class="btn-reset" id="resetBtn">🗑 <span class="btn-label">Réinitialiser</span></button>
+  </div>
+</header>
+
+<!-- ── CONTENU PRINCIPAL ── -->
+<div class="page-wrap">
+
+  <!-- Stats globales -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- No-data banner (si localStorage vide) -->
+  <div class="no-data-banner" id="noDataBanner" style="display:none">
+    <span class="icon">📊</span>
+    <h2>Aucune donnée pour l'instant</h2>
+    <p>Utilise le <strong>Mode Simple</strong> pour composer des repas. Chaque aliment validé sera comptabilisé ici automatiquement.</p>
+  </div>
+
+  <!-- TOP 5 GLOBAL -->
+  <div class="global-section" id="globalSection">
+    <div class="section-label">🌍 Top 5 global — toutes catégories</div>
+    <div class="global-podium" id="globalPodium"></div>
+  </div>
+
+  <!-- CATÉGORIES -->
+  <div class="section-label">📂 Détail par catégorie</div>
+  <div class="cats-grid" id="catsGrid"></div>
+
+</div>
+
+<!-- ── MODAL RESET ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <span class="modal-icon">⚠️</span>
+    <h3>Réinitialiser les compteurs ?</h3>
+    <p>Tous les compteurs de sélection seront remis à zéro. Cette action est <strong>irréversible</strong>.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modalCancel">Annuler</button>
+      <button class="btn-confirm-reset" id="modalConfirm">🗑 Oui, réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL IMPORT ── -->
+<div class="modal-overlay" id="modalImportOverlay">
+  <div class="modal-card">
+    <span class="modal-icon">📂</span>
+    <h3>Restaurer une sauvegarde</h3>
+    <p id="importInfo">Fichier sélectionné : chargement…</p>
+    <div class="modal-btns" style="flex-direction:column;gap:8px;">
+      <button class="btn-confirm-reset" id="importMergeBtn" style="background:rgba(52,211,153,0.12);color:var(--good);border-color:rgba(52,211,153,0.3);">
+        ➕ Fusionner avec les données actuelles
+      </button>
+      <button class="btn-confirm-reset" id="importReplaceBtn">
+        🔄 Remplacer les données actuelles
+      </button>
+      <button class="btn-cancel" id="importCancelBtn">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast">✅ Compteurs remis à zéro</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// DONNÉES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'acbolus_food_counts';
+
+/** Catégories avec icône, nom, et liste d'IDs BDD */
+const CATEGORIES = [
+  { id:'pain_cereales',     icon:'🥖', nom:'Pains & Céréales' },
+  { id:'feculents',         icon:'🍝', nom:'Féculents' },
+  { id:'legumineuses',      icon:'🫘', nom:'Légumineuses' },
+  { id:'legumes',           icon:'🥦', nom:'Légumes' },
+  { id:'fruits',            icon:'🍎', nom:'Fruits' },
+  { id:'proteines',         icon:'🍗', nom:'Protéines' },
+  { id:'entrees_froides',   icon:'🥗', nom:'Entrées froides' },
+  { id:'produits_laitiers', icon:'🥛', nom:'Produits laitiers' },
+  { id:'desserts_sucreries',icon:'🍰', nom:'Desserts & Pâtisseries' },
+  { id:'boissons',          icon:'🥤', nom:'Boissons' },
+  { id:'plats_prepares',    icon:'🍲', nom:'Plats préparés' },
+  { id:'sauces_condiments', icon:'🫙', nom:'Sauces & Condiments' },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARGEMENT BDD
+// ═══════════════════════════════════════════════════════════════════════════
+
+let DB = null;  // sera populé par fetch
+
+async function loadDB() {
+  try {
+    const resp = await fetch('aliments-index.json');
+    DB = await resp.json();
+  } catch(e) {
+    console.warn('BDD non chargée — mode dégradé', e);
+    DB = { categories: [] };
+  }
+}
+
+function getAlimentInfo(id) {
+  if (!DB) return null;
+  for (const cat of DB.categories) {
+    const a = cat.aliments.find(a => a.id === id);
+    if (a) return { ...a, cat_id: cat.id, cat_nom: cat.nom, cat_icon: cat.icon };
+  }
+  return null;
+}
+
+function getAlimentsByCat(catId) {
+  if (!DB) return [];
+  const cat = DB.categories.find(c => c.id === catId);
+  return cat ? cat.aliments : [];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPTEURS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Clé séparée pour la date du 1er enregistrement
+const META_KEY = 'acbolus_food_counts_meta';
+
+function getCountsMeta() {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function touchMeta() {
+  // Enregistre la date du 1er repas si pas encore fait
+  try {
+    const meta = getCountsMeta();
+    if (!meta.firstSeen) {
+      meta.firstSeen = new Date().toISOString();
+      localStorage.setItem(META_KEY, JSON.stringify(meta));
+    }
+    meta.lastSeen = new Date().toISOString();
+    localStorage.setItem(META_KEY, JSON.stringify(meta));
+  } catch {}
+}
+
+function getCounts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function resetCounts() {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(META_KEY);
+}
+
+/** Exporte les compteurs en fichier JSON téléchargeable */
+function exportBackup() {
+  const counts = getCounts();
+  const total  = getTotalSelections(counts);
+  if (total === 0) return null; // rien à sauvegarder
+
+  const payload = {
+    _meta: {
+      app:       'AC Bolus',
+      type:      'selection_counts_backup',
+      version:   '1.0',
+      date:      new Date().toISOString(),
+      total_selections: total,
+      nb_aliments: Object.keys(counts).length
+    },
+    counts
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href     = url;
+  a.download = `acbolus-top-aliments-backup-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return payload;
+}
+
+/** Importe un fichier JSON de backup et fusionne ou remplace les compteurs */
+function importBackup(file, mode = 'merge') {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        // Validation structure
+        if (!data.counts || typeof data.counts !== 'object') {
+          reject(new Error('Fichier invalide — structure inattendue'));
+          return;
+        }
+        // Optionnel : vérifier la signature app
+        if (data._meta?.app && data._meta.app !== 'AC Bolus') {
+          reject(new Error('Ce fichier ne provient pas de AC Bolus'));
+          return;
+        }
+
+        let final;
+        if (mode === 'merge') {
+          // Fusion : additionner les compteurs existants + importés
+          const existing = getCounts();
+          final = { ...existing };
+          Object.entries(data.counts).forEach(([id, count]) => {
+            final[id] = (final[id] || 0) + count;
+          });
+        } else {
+          // Remplacement total
+          final = data.counts;
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(final));
+        // Initialiser/préserver la meta firstSeen
+        try {
+          const existingMeta = getCountsMeta();
+          if (!existingMeta.firstSeen && data._meta?.date) {
+            const m = { firstSeen: data._meta.date, lastSeen: new Date().toISOString() };
+            localStorage.setItem(META_KEY, JSON.stringify(m));
+          }
+        } catch {}
+        resolve({
+          nb_aliments: Object.keys(data.counts).length,
+          total: Object.values(data.counts).reduce((s, v) => s + v, 0),
+          date: data._meta?.date || 'inconnue',
+          mode
+        });
+      } catch(err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
+    reader.readAsText(file);
+  });
+}
+
+function getTotalSelections(counts) {
+  return Object.values(counts).reduce((s, v) => s + v, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MÉDAILLES
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getMedal(rank) {
+  if (rank === 1) return { emoji: '🥇', cls: 'rank-1', bar: 'rank-1-bar' };
+  if (rank === 2) return { emoji: '🥈', cls: 'rank-2', bar: 'rank-2-bar' };
+  if (rank === 3) return { emoji: '🥉', cls: 'rank-3', bar: 'rank-3-bar' };
+  if (rank === 4) return { emoji: '☄️',  cls: 'rank-other', bar: 'rank-other-bar' };
+  if (rank === 5) return { emoji: '🔥',  cls: 'rank-other', bar: 'rank-other-bar' };
+  return { emoji: `${rank}.`, cls: 'rank-other', bar: 'rank-other-bar' };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDU TOP GLOBAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderGlobal(counts) {
+  const podium = document.getElementById('globalPodium');
+  const section = document.getElementById('globalSection');
+
+  // Trier tous les aliments par count
+  const all = Object.entries(counts)
+    .map(([id, count]) => ({ id, count, info: getAlimentInfo(id) }))
+    .filter(e => e.info)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  if (all.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  podium.innerHTML = all.map((e, i) => {
+    const rank = i + 1;
+    const medal = getMedal(rank);
+    return `
+      <div class="podium-card ${medal.cls}">
+        <span class="podium-rank">#${rank}</span>
+        <span class="podium-medal">${rank <= 5 ? medal.emoji : ''}</span>
+        <span class="podium-emoji">${e.info.emoji || '🍽️'}</span>
+        <div class="podium-nom">${e.info.nom}</div>
+        <div class="podium-cat">${e.info.cat_icon || ''} ${e.info.cat_nom}</div>
+        <div class="podium-count">${e.count}</div>
+        <div class="podium-count-label">sélection${e.count > 1 ? 's' : ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDU STATS BAR
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderStats(counts) {
+  const bar = document.getElementById('statsBar');
+  const total = getTotalSelections(counts);
+  const nbAliments = Object.keys(counts).length;
+  const nbCats = CATEGORIES.filter(cat =>
+    getAlimentsByCat(cat.id).some(a => counts[a.id])
+  ).length;
+
+  if (total === 0) { bar.innerHTML = ''; return; }
+
+  bar.innerHTML = `
+    <div class="stat-chip"><div class="n">${total}</div><div class="l">Sélections totales</div></div>
+    <div class="stat-chip"><div class="n">${nbAliments}</div><div class="l">Aliments différents</div></div>
+    <div class="stat-chip"><div class="n">${nbCats}</div><div class="l">Catégories actives</div></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDU CARDS CATÉGORIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderCategories(counts) {
+  const grid = document.getElementById('catsGrid');
+  grid.innerHTML = '';
+
+  let delay = 0;
+
+  CATEGORIES.forEach(cat => {
+    const aliments = getAlimentsByCat(cat.id);
+    // Trier les aliments de cette catégorie par count décroissant
+    const ranked = aliments
+      .map(a => ({ ...a, count: counts[a.id] || 0 }))
+      .filter(a => a.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.style.animationDelay = `${delay * 0.06}s`;
+    delay++;
+
+    const maxCount = ranked[0]?.count || 1;
+    const top3 = ranked.slice(0, 3);
+    const rest = ranked.slice(3, 10);
+
+    // Header
+    card.innerHTML = `
+      <div class="cat-header">
+        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-name">${cat.nom}</div>
+        <span class="cat-count-badge">${ranked.length} aliment${ranked.length > 1 ? 's' : ''}</span>
+      </div>
+    `;
+
+    // Corps — top 3 ou état vide
+    const top3Div = document.createElement('div');
+    top3Div.className = 'top3-list';
+
+    if (top3.length === 0) {
+      top3Div.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">💤</span>
+          <p>Aucun aliment sélectionné<br>dans cette catégorie</p>
+        </div>
+      `;
+    } else {
+      top3.forEach((a, i) => {
+        const rank = i + 1;
+        const medal = getMedal(rank);
+        const pct = Math.round((a.count / maxCount) * 100);
+        top3Div.innerHTML += `
+          <div class="top-item">
+            <span class="top-item-medal">${medal.emoji}</span>
+            <span class="top-item-emoji">${a.emoji || '🍽️'}</span>
+            <div class="top-item-info">
+              <div class="top-item-nom">${a.nom}</div>
+              <div class="top-item-bar-wrap">
+                <div class="top-item-bar ${medal.bar}" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <span class="top-item-count">${a.count}</span>
+          </div>
+        `;
+      });
+    }
+    card.appendChild(top3Div);
+
+    // Accordéon rang 4-10
+    if (rest.length > 0) {
+      const accBtn = document.createElement('button');
+      accBtn.className = 'accordeon-btn';
+      accBtn.innerHTML = `<i class="chevron">▾</i> Top 10 — voir les ${rest.length} suivants`;
+
+      const accBody = document.createElement('div');
+      accBody.className = 'accordeon-body';
+
+      rest.forEach((a, i) => {
+        const rank = i + 4;
+        const pct = Math.round((a.count / maxCount) * 100);
+        accBody.innerHTML += `
+          <div class="top-item">
+            <span class="top-item-medal" style="font-size:11px;color:var(--muted)">${rank}</span>
+            <span class="top-item-emoji">${a.emoji || '🍽️'}</span>
+            <div class="top-item-info">
+              <div class="top-item-nom">${a.nom}</div>
+              <div class="top-item-bar-wrap">
+                <div class="top-item-bar rank-other-bar" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <span class="top-item-count">${a.count}</span>
+          </div>
+        `;
+      });
+
+      accBtn.addEventListener('click', () => {
+        const isOpen = accBody.classList.toggle('open');
+        accBtn.classList.toggle('open', isOpen);
+        accBtn.innerHTML = isOpen
+          ? `<i class="chevron">▾</i> Masquer`
+          : `<i class="chevron">▾</i> Top 10 — voir les ${rest.length} suivants`;
+      });
+
+      card.appendChild(accBtn);
+      card.appendChild(accBody);
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDU PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+function render() {
+  const counts = getCounts();
+  const total = getTotalSelections(counts);
+  // Initialiser firstSeen si des données existent et qu'il n'y a pas encore de meta
+  if (total > 0) touchMeta();
+
+  // Mettre à jour le sous-titre
+  const updated = document.getElementById('lastUpdated');
+  if (total === 0) {
+    updated.textContent = 'Aucune donnée — utilise le Mode Simple';
+  } else {
+    const meta = getCountsMeta();
+    let since = '';
+    if (meta.firstSeen) {
+      const d = new Date(meta.firstSeen);
+      const pad = n => String(n).padStart(2,'0');
+      since = ` · depuis le ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}h${pad(d.getMinutes())}`;
+    }
+    updated.textContent = `${total} sélection${total > 1 ? 's' : ''}${since}`;
+  }
+
+  // No-data banner
+  document.getElementById('noDataBanner').style.display = total === 0 ? 'block' : 'none';
+
+  renderStats(counts);
+  renderGlobal(counts);
+  renderCategories(counts);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THÈME
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getTheme() {
+  try { return localStorage.getItem('bc_theme') || 'sombre'; } catch { return 'sombre'; }
+}
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.getElementById('themeBtn').textContent = t === 'sombre' ? '☀️' : '🌙';
+  try { localStorage.setItem('bc_theme', t); } catch {}
+}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  // Lire l'état réel du DOM (pas localStorage) pour éviter la désynchronisation
+  const current = document.documentElement.dataset.theme || 'sombre';
+  applyTheme(current === 'sombre' ? 'clair' : 'sombre');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODAL RESET
+// ═══════════════════════════════════════════════════════════════════════════
+
+const modal   = document.getElementById('modalOverlay');
+const toast   = document.getElementById('toast');
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  modal.classList.add('show');
+});
+document.getElementById('modalCancel').addEventListener('click', () => {
+  modal.classList.remove('show');
+});
+modal.addEventListener('click', e => {
+  if (e.target === modal) modal.classList.remove('show');
+});
+document.getElementById('modalConfirm').addEventListener('click', () => {
+  // Sauvegarder avant suppression si des données existent
+  const backed = exportBackup();
+  resetCounts();
+  modal.classList.remove('show');
+  render();
+  // Toast avec info backup
+  const toastEl = document.getElementById('toast');
+  toastEl.textContent = backed
+    ? '✅ Compteurs remis à zéro — backup téléchargé'
+    : '✅ Compteurs remis à zéro';
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 3200);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GESTION IMPORT
+// ═══════════════════════════════════════════════════════════════════════════
+
+const modalImport   = document.getElementById('modalImportOverlay');
+const importInfo    = document.getElementById('importInfo');
+let   pendingFile   = null;
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+  pendingFile = e.target.files[0];
+  if (!pendingFile) return;
+  importInfo.textContent = `Fichier : "${pendingFile.name}"`;
+  modalImport.classList.add('show');
+  // Reset input pour permettre re-sélection du même fichier
+  e.target.value = '';
+});
+
+document.getElementById('importCancelBtn').addEventListener('click', () => {
+  modalImport.classList.remove('show');
+  pendingFile = null;
+});
+modalImport.addEventListener('click', e => {
+  if (e.target === modalImport) { modalImport.classList.remove('show'); pendingFile = null; }
+});
+
+async function doImport(mode) {
+  if (!pendingFile) return;
+  modalImport.classList.remove('show');
+  try {
+    const result = await importBackup(pendingFile, mode);
+    pendingFile = null;
+    render();
+    const toastEl = document.getElementById('toast');
+    const modeLabel = mode === 'merge' ? 'fusionnées' : 'restaurées';
+    toastEl.textContent = `✅ ${result.nb_aliments} aliments ${modeLabel} (${result.total} sélections)`;
+    toastEl.style.background = 'var(--good)';
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 3500);
+  } catch(err) {
+    pendingFile = null;
+    const toastEl = document.getElementById('toast');
+    toastEl.textContent = `❌ ${err.message}`;
+    toastEl.style.background = 'var(--bad)';
+    toastEl.classList.add('show');
+    setTimeout(() => { toastEl.classList.remove('show'); toastEl.style.background = ''; }, 4000);
+  }
+}
+
+document.getElementById('importMergeBtn').addEventListener('click',   () => doImport('merge'));
+document.getElementById('importReplaceBtn').addEventListener('click', () => doImport('replace'));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+applyTheme(getTheme());
+
+loadDB().then(() => {
+  render();
+});
+</script>
+</body>
+</html>
