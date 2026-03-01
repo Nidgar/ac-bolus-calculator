@@ -199,6 +199,10 @@ class SimpleModeWizard {
 
     aliments.forEach(aliment => {
       const isSelected = this.isAlimentSelected(etape.id, aliment.id);
+      const hasGluc    = aliment.glucides > 0;
+      const glucLabel  = hasGluc
+        ? `+${aliment.glucides}g glucides`
+        : '0g glucides';
       html += `
         <button class="alimentCard ${isSelected ? 'selected' : ''}"
                 data-action="selectionner-aliment"
@@ -207,8 +211,8 @@ class SimpleModeWizard {
                 data-multi="${etape.multiSelect}">
           <div class="alimentEmoji">${aliment.emoji}</div>
           <div class="alimentNom">${aliment.nom}</div>
-          ${aliment.portion ? `<div class="alimentPortion">${aliment.portion}</div>` : ''}
-          <div class="alimentGlucides">${aliment.glucides > 0 ? '+' + aliment.glucides + 'g' : '0g'}</div>
+          ${aliment.portion ? `<div class="alimentPortion">📏 ${aliment.portion}</div>` : ''}
+          <div class="alimentGlucides${hasGluc ? '' : ' zero'}">${glucLabel}</div>
           ${isSelected ? '<div class="alimentCheck">✓</div>' : ''}
         </button>
       `;
@@ -276,6 +280,10 @@ class SimpleModeWizard {
 
     aliments.forEach(aliment => {
       const isSelected = this.isAlimentSelectedInSousEtape(etape.id, sousEtape.id, aliment.id);
+      const hasGluc    = aliment.glucides > 0;
+      const glucLabel  = hasGluc
+        ? `+${aliment.glucides}g glucides`
+        : '0g glucides';
       html += `
         <button class="alimentCard ${isSelected ? 'selected' : ''}"
                 data-action="selectionner-sous"
@@ -285,8 +293,8 @@ class SimpleModeWizard {
                 data-multi="${sousEtape.multiSelect}">
           <div class="alimentEmoji">${aliment.emoji}</div>
           <div class="alimentNom">${aliment.nom}</div>
-          ${aliment.portion ? `<div class="alimentPortion">${aliment.portion}</div>` : ''}
-          <div class="alimentGlucides">${aliment.glucides > 0 ? '+' + aliment.glucides + 'g' : '0g'}</div>
+          ${aliment.portion ? `<div class="alimentPortion">📏 ${aliment.portion}</div>` : ''}
+          <div class="alimentGlucides${hasGluc ? '' : ' zero'}">${glucLabel}</div>
           ${isSelected ? '<div class="alimentCheck">✓</div>' : ''}
         </button>
       `;
@@ -487,7 +495,10 @@ class SimpleModeWizard {
             <div class="recapTotalValue">${this.totalIG} ${this.getIGColor()}</div>
           </div>
         </div>
-        <div class="recapConseil"><span class="icon">${conseil.icon}</span>${conseil.message}</div>
+        ${this.totalGlucides === 0
+          ? `<div class="recapConseil"><div style="padding:10px 12px;background:rgba(110,231,255,0.08);border:1px solid rgba(110,231,255,0.25);border-radius:8px;font-weight:700;font-size:13px;color:var(--muted,#94a3b8);line-height:1.5;">⏳ <strong>Conseil bolus en attente</strong><br>Aucun glucide dans ce repas — le conseil de timing bolus ne s'applique pas.</div></div>`
+          : `<div class="recapConseil"><span class="icon">${conseil.icon}</span>${conseil.message}</div>`
+        }
       </div>
       <div class="recapAccordeon">
         <button class="recapAccordeonBtn" data-action="toggle-recap" id="recapAccordeonBtn">
@@ -556,7 +567,8 @@ class SimpleModeWizard {
               <div style="font-size:11px;font-weight:700;color:var(--muted,#94a3b8);line-height:1.4;">
                 ℹ️ Glucides approximatifs. Vérifie si besoin avec un adulte (portion réelle / étiquette).
               </div>
-              ${isSplit ? `
+              ${this.totalGlucides === 0 ? `<div style="padding:10px 12px;background:rgba(110,231,255,0.08);border:1px solid rgba(110,231,255,0.25);border-radius:8px;font-weight:700;font-size:13px;color:var(--muted,#94a3b8);line-height:1.5;">⏳ <strong>Conseil bolus en attente</strong><br>Aucun glucide dans ce repas — le conseil de timing bolus ne s'applique pas.</div>`
+              : isSplit ? `
               <button
                 id="applyIGOptimBtn"
                 style="width:100%;padding:10px 14px;background:rgba(251,191,36,0.18);color:inherit;border:1.5px solid rgba(251,191,36,0.5);border-radius:10px;cursor:pointer;font-weight:800;font-size:14px;text-align:center;"

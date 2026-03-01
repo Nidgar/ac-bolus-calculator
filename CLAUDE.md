@@ -368,6 +368,38 @@ window.FoodDatabase = FoodDatabase;
 2. Tests essentiels uniquement
 ```
 
+### QA automatique (aliments-index.json)
+```bash
+# Script principal — valide TOUT (ids, types, bornes, unités, alias)
+node qa-full.js [aliments-index.json]
+
+# Checks effectués :
+#   ✅ IDs uniques dans toute la base
+#   ✅ Champs obligatoires (id, nom, glucides, ig, portion_usuelle)
+#   ✅ Types JS corrects pour chaque champ
+#   ✅ glucides borné [0–100], ig [0–100] ou null
+#   ✅ portion.unite ∈ { 'g', 'ml' }
+#   ✅ portion.quantite > 0
+#   ✅ ig=null réservé aux aliments non-glucidiques (glucides ≤ 1)
+#   ✅ Collisions alias (ERREUR si alias = id dédié, ⚠️ si générique)
+
+# Exit codes :
+#   0 → base propre (prête au déploiement)
+#   1 → erreur(s) bloquante(s) à corriger
+
+# À lancer OBLIGATOIREMENT :
+#   - avant tout déploiement
+#   - après ajout ou modification d'un aliment
+#   - après fusion de branches (futur CI)
+```
+
+### Politique des alias génériques acceptés
+Les alias suivants retournent intentionnellement plusieurs aliments
+(comportement de recherche voulu, documenté dans `aliments-index.json#qa`) :
+- `"viennoiserie"` → croissant + pain au chocolat
+- `"chocolat"` → chocolat noir + chocolat au lait
+- `"poisson"` → saumon + thon
+
 ### Tests automatisés (futurs)
 ```javascript
 // TODO : Ajouter Jest ou similaire pour :
@@ -398,13 +430,14 @@ console.log('🔍 Mode debug activé');
   "synonymes": ["alias1", "alias2"],
   "glucides": 50,
   "ig": 55,
-  "cg": 27.5,
   "portion_usuelle": {
     "quantite": 100,
     "unite": "g",
     "description": "1 portion"
   }
 }
+// ⚠️ Champ "cg" supprimé (Issue P0) — calculé dynamiquement
+// ⚠️ Lancer "node qa-full.js" après tout ajout
 ```
 
 ### Modifier un calcul

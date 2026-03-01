@@ -201,27 +201,54 @@ class FoodSearchUI {
 
     if (results.length === 0) {
       container.innerHTML = '';
+      // Masquer le toggle si aucun résultat
+      const toggle = document.getElementById('searchViewToggle');
+      if (toggle) toggle.style.display = 'none';
       return;
     }
 
+    // Afficher le toggle uniquement si des résultats sont présents
+    const toggle = document.getElementById('searchViewToggle');
+    if (toggle) toggle.style.display = results.length > 0 ? 'flex' : 'none';
+
     container.innerHTML = results.map(food => {
-      // Glucides réels pour la portion usuelle (= ce que l'utilisateur va consommer)
-      const glucPortion = Math.round(food.glucides * food.portion_usuelle.quantite / 100);
+      // ── Données communes ──────────────────────────────────────────────────
+      const p           = food.portion_usuelle;
+      const unite       = p.unite || 'g';          // 'ml' pour liquides
+      const glucPortion = Math.round(food.glucides * p.quantite / 100);
+      const cgPortion   = this.db.getCGPortion(food); // { cg, label } — Issue P0
+      const cgColor     = this.getCGColor(cgPortion.cg);
+      const cgLevel     = cgPortion.cg < 10 ? 'basse 🟢' : cgPortion.cg < 20 ? 'modérée 🟡' : 'élevée 🔴';
+      const igDisplay   = food.ig ?? 'N/A';
+
       return `
       <div class="foodItem" data-food-id="${food.id}">
         <div class="info">
           <div class="name">${food.category_icon} ${food.nom}</div>
           <div class="meta" style="display:flex; flex-direction:column; gap:3px; margin-top:3px;">
-            <span style="font-size:11px; opacity:0.6; font-weight:500;">
-              📊 Valeurs pour 100g — ${food.glucides}g glucides • IG : ${food.ig}
+
+            <!-- Vue "Par portion" (défaut) ────────────────────────── -->
+            <span class="meta-portion" style="font-size:13px; font-weight:800; color: var(--accent);">
+              🍽️ ${p.description} (${p.quantite}${unite}) → <strong>~${glucPortion}g glucides</strong>
             </span>
-            <span style="font-size:13px; font-weight:800; color: var(--good, #4ade80);">
-              🍽️ Portion usuelle : ${food.portion_usuelle.description} (${food.portion_usuelle.quantite}g) → ~${glucPortion}g glucides
+            <span class="meta-portion" style="font-size:11px; font-weight:700; color:${cgColor};">
+              ⚡ CG portion : ${cgPortion.cg}
+              <span style="opacity:0.6; font-weight:500;">(${cgLevel})</span>
             </span>
+
+            <!-- Vue "Pour 100g" ────────────────────────────────────── -->
+            <span class="meta-100g" style="font-size:13px; font-weight:800; color: var(--accent);">
+              📊 ${food.glucides}g glucides <span style="font-weight:600; opacity:0.7;">/ 100${unite}</span>
+            </span>
+            <span class="meta-100g" style="font-size:11px; font-weight:600; opacity:0.65;">
+              IG : ${igDisplay}
+              <span style="opacity:0.7; margin-left:6px;">→ portion réf : ${p.description} (${p.quantite}${unite})</span>
+            </span>
+
           </div>
         </div>
-        <button 
-          class="add" 
+        <button
+          class="add"
           data-action="add"
           data-food-id="${food.id}"
           aria-label="Ajouter ${food.nom}"
@@ -329,15 +356,26 @@ class FoodSearchUI {
       const food = this.db.getById(item.aliment_id);
       if (!food) return '';
 
-      const glucides = (food.glucides * item.quantite_g / 100).toFixed(1);
+      const unite       = food.portion_usuelle?.unite || 'g';
+      const glucides    = (food.glucides * item.quantite_g / 100).toFixed(1);
+      const igVal       = food.ig ?? 0; // null = N/A (Issue 6)
+      const cgLive      = Math.round(food.glucides * igVal / 100 * item.quantite_g / 100 * 10) / 10;
+      const cgColor     = this.getCGColor(cgLive);
+      const cgLabel     = cgLive < 10 ? 'basse 🟢' : cgLive < 20 ? 'modérée 🟡' : 'élevée 🔴';
 
       return `
         <div class="plateItem">
           <div class="itemInfo">
             <div class="itemName">${food.category_icon} ${food.nom}</div>
             <div class="itemMeta">
-              <span style="font-weight:800;">${glucides}g glucides</span>
-              <span style="font-size:11px; opacity:0.6;"> (base : ${food.glucides}g/100g • IG: ${food.ig})</span>
+              <span style="font-weight:800; font-size:14px;">${glucides}g glucides</span>
+              <span style="font-size:11px; opacity:0.55;"> pour ${item.quantite_g}${unite}</span>
+              <span style="font-size:11px; opacity:0.45; display:block; margin-top:1px;">
+                (soit ${food.glucides}g/100${unite} • IG&nbsp;${food.ig ?? 'N/A'})
+              </span>
+              <span style="font-size:11px; font-weight:700; color:${cgColor}; display:block; margin-top:2px;">
+                ⚡ CG : ${cgLive} — ${cgLabel}
+              </span>
             </div>
           </div>
           <input 
@@ -387,7 +425,9 @@ class FoodSearchUI {
           </div>
         </div>
         <div class="igTimingWrapper">
-          <button
+          ${meal.carbs_g === 0
+            ? `<div style="padding:10px 12px;background:rgba(110,231,255,0.08);border:1px solid rgba(110,231,255,0.25);border-radius:8px;font-weight:700;font-size:13px;color:var(--muted,#94a3b8);line-height:1.5;">⏳ <strong>Conseil bolus en attente</strong><br>Aucun glucide dans ce repas — le conseil de timing bolus ne s'applique pas.</div>`
+            : `<button
             class="igTimingRevealBtn"
             data-action="reveal-ig-timing"
             aria-expanded="false"
@@ -403,7 +443,8 @@ class FoodSearchUI {
             <div class="timingSuggestion">
               ${timing.icon} ${timing.message}
             </div>
-          </div>
+          </div>`
+          }
         </div>
         <button 
           data-action="reset"
@@ -459,7 +500,8 @@ class FoodSearchUI {
             <div style="font-size: 11px; font-weight: 700; color: var(--muted, #94a3b8); line-height: 1.4;">
               ℹ️ Glucides approximatifs. Vérifie si besoin avec un adulte (portion réelle / étiquette).
             </div>
-            ${isSplit ? `
+            ${meal.carbs_g === 0 ? `<div style="padding:10px 12px;background:rgba(110,231,255,0.08);border:1px solid rgba(110,231,255,0.25);border-radius:8px;font-weight:700;font-size:13px;color:var(--muted,#94a3b8);line-height:1.5;">⏳ <strong>Conseil bolus en attente</strong><br>Aucun glucide dans ce repas — le conseil de timing bolus ne s'applique pas.</div>`
+            : isSplit ? `
             <button
               id="applyIGOptimBtn"
               style="width:100%; padding:10px 14px; background:rgba(251,191,36,0.18); color:inherit; border:1.5px solid rgba(251,191,36,0.5); border-radius:10px; cursor:pointer; font-weight:800; font-size:14px; text-align:center;"

@@ -774,6 +774,42 @@
       opacity: 0.5;
     }
     
+    /* ── Toggle vue 100g / portion ─────────────────────── */
+    .searchViewToggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 4px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .searchViewToggle span { flex: 1; }
+    .viewToggleBtn {
+      display: flex;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .viewToggleBtn button {
+      padding: 4px 10px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      white-space: nowrap;
+    }
+    .viewToggleBtn button.active {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    /* Masquage conditionnel selon vue active */
+    .searchResults[data-view="portion"] .meta-100g   { display: none; }
+    .searchResults[data-view="100g"]    .meta-portion { display: none; }
+
     .searchResults{
       max-height: 300px;
       overflow-y: auto;
@@ -1976,8 +2012,21 @@
           >
         </div>
 
+        <!-- Toggle vue 100g / portion -->
+        <div class="searchViewToggle" id="searchViewToggle" style="display:none;">
+          <span>Afficher :</span>
+          <div class="viewToggleBtn" role="group" aria-label="Mode d'affichage des glucides">
+            <button id="viewBtnPortion" class="active" onclick="setSearchView('portion')" aria-pressed="true">
+              🍽️ Par portion
+            </button>
+            <button id="viewBtn100g" onclick="setSearchView('100g')" aria-pressed="false">
+              📊 Pour 100g
+            </button>
+          </div>
+        </div>
+
         <!-- Résultats de recherche -->
-        <div id="searchResults" class="searchResults"></div>
+        <div id="searchResults" class="searchResults" data-view="portion"></div>
 
         <!-- Mon assiette -->
         <div class="myPlate">
@@ -2877,6 +2926,23 @@
   // ── P2 Issue 7 — Verrou wizard sur le champ glucides ───────────────
   // Exposées sur window pour être accessibles depuis simple-mode-wizard.js
   // et food-search-ui.js (scripts externes, hors closure)
+  // ── Toggle vue recherche : 'portion' (défaut) | '100g' ──────────────────────
+  window.setSearchView = function(view) {
+    const results   = document.getElementById('searchResults');
+    const btnPortion = document.getElementById('viewBtnPortion');
+    const btn100g    = document.getElementById('viewBtn100g');
+    if (!results) return;
+
+    results.setAttribute('data-view', view);
+
+    if (btnPortion && btn100g) {
+      btnPortion.classList.toggle('active', view === 'portion');
+      btn100g.classList.toggle('active',    view === '100g');
+      btnPortion.setAttribute('aria-pressed', String(view === 'portion'));
+      btn100g.setAttribute('aria-pressed',    String(view === '100g'));
+    }
+  };
+
   window.lockCarbField = function(sourceLabel) {
     const field = document.getElementById('carbFast');
     const badge = document.getElementById('carbWizardLockBadge');

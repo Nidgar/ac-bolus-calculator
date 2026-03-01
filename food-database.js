@@ -356,6 +356,28 @@ class FoodDatabase {
   }
 
   /**
+   * Calcule la Charge Glycémique pour la portion usuelle de l'aliment.
+   * Utile pour afficher une référence parlante : "CG pour 1 verre (250ml) : 17.9"
+   *
+   * Formule : glucides/100 × IG/100 × portion_quantite
+   * Exemple  : Coca-Cola → 11 × 65/100 × 250/100 = 17.9
+   *
+   * @param {Object} aliment - Objet aliment (doit avoir glucides, ig, portion_usuelle)
+   * @returns {{ cg: number, label: string }} cg brute + label formaté pour l'UI
+   */
+  getCGPortion(aliment) {
+    if (!aliment?.portion_usuelle?.quantite) return { cg: 0, label: '—' };
+    const ig = aliment.ig ?? 0; // null = 'IG non applicable' → 0 dans les calculs (Issue 6)
+    const cg = (aliment.glucides * ig / 100 * aliment.portion_usuelle.quantite) / 100;
+    const cgArrondi = Math.round(cg * 10) / 10;
+    const { quantite, unite, description } = aliment.portion_usuelle;
+    return {
+      cg:    cgArrondi,
+      label: `CG pour ${description} (${quantite}${unite}) : ${cgArrondi}`
+    };
+  }
+
+  /**
    * Calcule les totaux d'un repas.
    * Retourne des valeurs BRUTES (pas d'arrondi) — l'UI appelle MealMetrics.format().
    *
@@ -376,10 +398,13 @@ class FoodDatabase {
         continue;
       }
       const carbs = (aliment.glucides * item.quantite_g) / 100;
-      const cg    = (aliment.cg       * item.quantite_g) / 100;
+      // CG calculée dynamiquement : (glucides/100g × IG/100) × quantite_g/100
+      // "cg" n'est plus stockée dans le JSON (champ supprimé — cf. Issue P0)
+      const igVal  = aliment.ig ?? 0; // null = 'IG non applicable' (Issue 6)
+      const cg    = (aliment.glucides * igVal / 100 * item.quantite_g) / 100;
       totalCarbs  += carbs;
       totalCG     += cg;
-      weightedIG  += aliment.ig * carbs;
+      weightedIG  += igVal * carbs;
     }
 
     return {

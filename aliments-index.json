@@ -1,7 +1,38 @@
 {
-  "version": "2.1",
-  "date": "2025-02-15",
+  "version": "2.2",
+  "date": "2026-03-01",
   "description": "Base de données complète - 99 aliments, 9 catégories optimisées",
+  "schema": {
+    "note": "Champs stables — refactor P1 (carbs_g/gi/default_portion) écarté : risque/gain défavorable sur app 100% francophone.",
+    "glucides": "g pour 100g ou 100ml selon l'aliment (voir portion_usuelle.unite)",
+    "ig": "Index Glycémique — acronyme français retenu volontairement (vs 'gi' anglais)",
+    "portion_usuelle": "Portion de référence réelle — base des calculs CG dynamiques (cf. getCGPortion)"
+  },
+  "qa": {
+    "alias_collisions_policy": "Les alias génériques (viennoiserie, chocolat, poisson) retournant plusieurs résultats sont INTENTIONNELS et traités par le scoring de recherche. Sont INTERDITS : les alias identiques au nom ou id d'un aliment dédié (ex: 'couscous' comme synonyme de semoule alors qu'un id 'couscous' existe).",
+    "last_audit": "2026-03-01",
+    "collisions_resolved": [
+      "semoule.synonymes: suppression de 'couscous' (id dédié existant)"
+    ],
+    "collisions_accepted": [
+      "viennoiserie → croissant + pain_chocolat (terme générique, comportement attendu)",
+      "chocolat → chocolat_noir + chocolat_lait (désambiguïsation UI via scoring)",
+      "poisson → saumon + thon (terme générique, comportement attendu)"
+    ],
+    "ig_null_policy": "ig=null signifie 'IG non applicable' (viandes, poissons, matières grasses). Ne pas confondre avec ig=0 (IG mesuré nul). Dans les calculs : traiter null comme 0 via '?? 0'. Dans l'UI : afficher 'N/A' au lieu de '0'.",
+    "ig_null_ids": [
+      "beurre",
+      "fromage_pate_dure",
+      "jambon_blanc",
+      "jambon_cru",
+      "poulet",
+      "saucisse",
+      "saucisson",
+      "saumon",
+      "steak_hache",
+      "thon"
+    ]
+  },
   "categories": [
     {
       "id": "pain_cereales",
@@ -11,92 +42,148 @@
         {
           "id": "pain_blanc",
           "nom": "Pain blanc",
-          "synonymes": ["baguette", "pain"],
+          "synonymes": [
+            "baguette",
+            "pain"
+          ],
           "glucides": 55,
           "ig": 70,
-          "cg": 38.5,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "2 tranches"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         },
         {
           "id": "pain_complet",
           "nom": "Pain complet",
-          "synonymes": ["pain integral", "pain cereales"],
+          "synonymes": [
+            "pain integral",
+            "pain cereales"
+          ],
           "glucides": 48,
           "ig": 45,
-          "cg": 21.6,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "2 tranches"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         },
         {
           "id": "pain_mie",
           "nom": "Pain de mie",
-          "synonymes": ["toast", "pain mie"],
+          "synonymes": [
+            "toast",
+            "pain mie"
+          ],
           "glucides": 50,
           "ig": 70,
-          "cg": 35,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "2 tranches"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         },
         {
           "id": "biscotte",
           "nom": "Biscottes",
-          "synonymes": ["biscotte"],
+          "synonymes": [
+            "biscotte"
+          ],
           "glucides": 75,
           "ig": 70,
-          "cg": 52.5,
-          "portion_usuelle": {"quantite": 20, "unite": "g", "description": "2 biscottes"}
+          "portion_usuelle": {
+            "quantite": 20,
+            "unite": "g",
+            "description": "2 biscottes"
+          }
         },
         {
           "id": "cereales_nature",
           "nom": "Céréales nature",
-          "synonymes": ["corn flakes", "cereales"],
+          "synonymes": [
+            "corn flakes",
+            "cereales"
+          ],
           "glucides": 85,
           "ig": 85,
-          "cg": 72.3,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "muesli",
           "nom": "Muesli",
-          "synonymes": ["granola"],
+          "synonymes": [
+            "granola"
+          ],
           "glucides": 66,
           "ig": 50,
-          "cg": 33,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "flocons_avoine",
           "nom": "Flocons d'avoine",
-          "synonymes": ["avoine", "porridge"],
+          "synonymes": [
+            "avoine",
+            "porridge"
+          ],
           "glucides": 60,
           "ig": 55,
-          "cg": 33,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "croissant",
           "nom": "Croissant",
-          "synonymes": ["viennoiserie"],
+          "synonymes": [
+            "viennoiserie"
+          ],
           "glucides": 45,
           "ig": 70,
-          "cg": 31.5,
-          "portion_usuelle": {"quantite": 60, "unite": "g", "description": "1 croissant"}
+          "portion_usuelle": {
+            "quantite": 60,
+            "unite": "g",
+            "description": "1 croissant"
+          }
         },
         {
           "id": "pain_chocolat",
           "nom": "Pain au chocolat",
-          "synonymes": ["chocolatine", "viennoiserie"],
+          "synonymes": [
+            "chocolatine",
+            "viennoiserie"
+          ],
           "glucides": 48,
           "ig": 65,
-          "cg": 31.2,
-          "portion_usuelle": {"quantite": 70, "unite": "g", "description": "1 pain au chocolat"}
+          "portion_usuelle": {
+            "quantite": 70,
+            "unite": "g",
+            "description": "1 pain au chocolat"
+          }
         },
         {
           "id": "brioche",
           "nom": "Brioche",
-          "synonymes": ["pain brioche"],
+          "synonymes": [
+            "pain brioche"
+          ],
           "glucides": 50,
           "ig": 70,
-          "cg": 35,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "2 tranches"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         }
       ]
     },
@@ -108,128 +195,209 @@
         {
           "id": "pates_blanches",
           "nom": "Pâtes blanches cuites",
-          "synonymes": ["pates", "spaghetti", "coquillettes", "macaroni"],
+          "synonymes": [
+            "pates",
+            "spaghetti",
+            "coquillettes",
+            "macaroni"
+          ],
           "glucides": 25,
           "ig": 60,
-          "cg": 15,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "pates_completes",
           "nom": "Pâtes complètes cuites",
-          "synonymes": ["pates integrales", "pates completes"],
+          "synonymes": [
+            "pates integrales",
+            "pates completes"
+          ],
           "glucides": 23,
           "ig": 40,
-          "cg": 9.2,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "riz_blanc",
           "nom": "Riz blanc cuit",
-          "synonymes": ["riz"],
+          "synonymes": [
+            "riz"
+          ],
           "glucides": 28,
           "ig": 70,
-          "cg": 19.6,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "riz_complet",
           "nom": "Riz complet cuit",
-          "synonymes": ["riz brun", "riz integral"],
+          "synonymes": [
+            "riz brun",
+            "riz integral"
+          ],
           "glucides": 23,
           "ig": 50,
-          "cg": 11.5,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "riz_basmati",
           "nom": "Riz basmati cuit",
-          "synonymes": ["basmati"],
+          "synonymes": [
+            "basmati"
+          ],
           "glucides": 25,
           "ig": 58,
-          "cg": 14.5,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "quinoa",
           "nom": "Quinoa cuit",
-          "synonymes": ["quinoa"],
+          "synonymes": [
+            "quinoa"
+          ],
           "glucides": 21,
           "ig": 53,
-          "cg": 11.1,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "semoule",
           "nom": "Semoule cuite",
-          "synonymes": ["couscous", "semoule couscous"],
+          "synonymes": [
+            "semoule couscous"
+          ],
           "glucides": 23,
           "ig": 65,
-          "cg": 15,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "vermicelles",
           "nom": "Vermicelles de riz",
-          "synonymes": ["nouilles riz", "vermicelle"],
+          "synonymes": [
+            "nouilles riz",
+            "vermicelle"
+          ],
           "glucides": 24,
           "ig": 60,
-          "cg": 14.4,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "pomme_terre_vapeur",
           "nom": "Pommes de terre vapeur",
-          "synonymes": ["patate vapeur", "pomme terre", "pdt"],
+          "synonymes": [
+            "patate vapeur",
+            "pomme terre",
+            "pdt"
+          ],
           "glucides": 20,
           "ig": 65,
-          "cg": 13,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "2-3 pommes de terre"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "2-3 pommes de terre"
+          }
         },
         {
           "id": "puree",
           "nom": "Purée de pommes de terre",
-          "synonymes": ["puree", "ecrasee"],
+          "synonymes": [
+            "puree",
+            "ecrasee"
+          ],
           "glucides": 16,
           "ig": 90,
-          "cg": 14.4,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "frites",
           "nom": "Frites",
-          "synonymes": ["pomme terre frite", "patate frite"],
+          "synonymes": [
+            "pomme terre frite",
+            "patate frite"
+          ],
           "glucides": 35,
           "ig": 75,
-          "cg": 26.3,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "pomme_terre_rotie",
           "nom": "Pommes de terre rôties",
-          "synonymes": ["patate rotie", "pomme terre four"],
+          "synonymes": [
+            "patate rotie",
+            "pomme terre four"
+          ],
           "glucides": 22,
           "ig": 70,
-          "cg": 15.4,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "patate_douce",
           "nom": "Patate douce",
-          "synonymes": ["patate"],
+          "synonymes": [
+            "patate"
+          ],
           "glucides": 20,
           "ig": 61,
-          "cg": 12.2,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "gnocchi",
           "nom": "Gnocchi",
-          "synonymes": ["gnocchis"],
+          "synonymes": [
+            "gnocchis"
+          ],
           "glucides": 28,
           "ig": 68,
-          "cg": 19,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         }
       ]
     },
@@ -241,47 +409,77 @@
         {
           "id": "lentilles_vertes",
           "nom": "Lentilles vertes cuites",
-          "synonymes": ["lentille", "lentilles"],
+          "synonymes": [
+            "lentille",
+            "lentilles"
+          ],
           "glucides": 20,
           "ig": 30,
-          "cg": 6,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "lentilles_corail",
           "nom": "Lentilles corail cuites",
-          "synonymes": ["lentille rouge", "lentille corail"],
+          "synonymes": [
+            "lentille rouge",
+            "lentille corail"
+          ],
           "glucides": 21,
           "ig": 26,
-          "cg": 5.5,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "pois_chiches",
           "nom": "Pois chiches cuits",
-          "synonymes": ["pois chiche", "houmous base"],
+          "synonymes": [
+            "pois chiche",
+            "houmous base"
+          ],
           "glucides": 27,
           "ig": 28,
-          "cg": 7.6,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "haricots_blancs",
           "nom": "Haricots blancs cuits",
-          "synonymes": ["haricot blanc", "mogette"],
+          "synonymes": [
+            "haricot blanc",
+            "mogette"
+          ],
           "glucides": 21,
           "ig": 35,
-          "cg": 7.4,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "haricots_rouges",
           "nom": "Haricots rouges cuits",
-          "synonymes": ["haricot rouge", "kidney"],
+          "synonymes": [
+            "haricot rouge",
+            "kidney"
+          ],
           "glucides": 22,
           "ig": 35,
-          "cg": 7.7,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         }
       ]
     },
@@ -293,20 +491,33 @@
         {
           "id": "pomme",
           "nom": "Pomme",
-          "synonymes": ["golden", "gala", "granny"],
+          "synonymes": [
+            "golden",
+            "gala",
+            "granny"
+          ],
           "glucides": 14,
           "ig": 38,
-          "cg": 5.3,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 pomme"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 pomme"
+          }
         },
         {
           "id": "poire",
           "nom": "Poire",
-          "synonymes": ["williams", "conference"],
+          "synonymes": [
+            "williams",
+            "conference"
+          ],
           "glucides": 15,
           "ig": 38,
-          "cg": 5.7,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 poire"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 poire"
+          }
         },
         {
           "id": "banane",
@@ -314,8 +525,11 @@
           "synonymes": [],
           "glucides": 23,
           "ig": 52,
-          "cg": 12,
-          "portion_usuelle": {"quantite": 120, "unite": "g", "description": "1 banane"}
+          "portion_usuelle": {
+            "quantite": 120,
+            "unite": "g",
+            "description": "1 banane"
+          }
         },
         {
           "id": "orange",
@@ -323,35 +537,53 @@
           "synonymes": [],
           "glucides": 12,
           "ig": 43,
-          "cg": 5.2,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 orange"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 orange"
+          }
         },
         {
           "id": "mandarine",
           "nom": "Mandarine",
-          "synonymes": ["clementine"],
+          "synonymes": [
+            "clementine"
+          ],
           "glucides": 13,
           "ig": 40,
-          "cg": 5.2,
-          "portion_usuelle": {"quantite": 80, "unite": "g", "description": "1 mandarine"}
+          "portion_usuelle": {
+            "quantite": 80,
+            "unite": "g",
+            "description": "1 mandarine"
+          }
         },
         {
           "id": "fraise",
           "nom": "Fraises",
-          "synonymes": ["fraise"],
+          "synonymes": [
+            "fraise"
+          ],
           "glucides": 8,
           "ig": 40,
-          "cg": 3.2,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "framboise",
           "nom": "Framboises",
-          "synonymes": ["framboise"],
+          "synonymes": [
+            "framboise"
+          ],
           "glucides": 12,
           "ig": 26,
-          "cg": 3.1,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "raisin",
@@ -359,8 +591,11 @@
           "synonymes": [],
           "glucides": 17,
           "ig": 59,
-          "cg": 10,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 grappe"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 grappe"
+          }
         },
         {
           "id": "kiwi",
@@ -368,17 +603,25 @@
           "synonymes": [],
           "glucides": 15,
           "ig": 53,
-          "cg": 8,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 kiwi"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 kiwi"
+          }
         },
         {
           "id": "peche",
           "nom": "Pêche",
-          "synonymes": ["nectarine"],
+          "synonymes": [
+            "nectarine"
+          ],
           "glucides": 10,
           "ig": 42,
-          "cg": 4.2,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 pêche"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 pêche"
+          }
         },
         {
           "id": "melon",
@@ -386,17 +629,25 @@
           "synonymes": [],
           "glucides": 8,
           "ig": 65,
-          "cg": 5.2,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1 part"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 part"
+          }
         },
         {
           "id": "pasteque",
           "nom": "Pastèque",
-          "synonymes": ["melon eau"],
+          "synonymes": [
+            "melon eau"
+          ],
           "glucides": 8,
           "ig": 72,
-          "cg": 5.8,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1 part"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 part"
+          }
         },
         {
           "id": "abricot",
@@ -404,17 +655,25 @@
           "synonymes": [],
           "glucides": 11,
           "ig": 57,
-          "cg": 6.3,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "2 abricots"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "2 abricots"
+          }
         },
         {
           "id": "cerise",
           "nom": "Cerises",
-          "synonymes": ["cerise"],
+          "synonymes": [
+            "cerise"
+          ],
           "glucides": 16,
           "ig": 63,
-          "cg": 10.1,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "ananas",
@@ -422,8 +681,11 @@
           "synonymes": [],
           "glucides": 13,
           "ig": 59,
-          "cg": 7.7,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "2 tranches"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         }
       ]
     },
@@ -438,17 +700,25 @@
           "synonymes": [],
           "glucides": 4,
           "ig": 30,
-          "cg": 1.2,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 tomate"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 tomate"
+          }
         },
         {
           "id": "carotte",
           "nom": "Carotte cuite",
-          "synonymes": ["carotte"],
+          "synonymes": [
+            "carotte"
+          ],
           "glucides": 7,
           "ig": 47,
-          "cg": 3.3,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "courgette",
@@ -456,26 +726,40 @@
           "synonymes": [],
           "glucides": 3,
           "ig": 15,
-          "cg": 0.5,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "salade",
           "nom": "Salade verte",
-          "synonymes": ["laitue", "batavia"],
+          "synonymes": [
+            "laitue",
+            "batavia"
+          ],
           "glucides": 2,
           "ig": 15,
-          "cg": 0.3,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "1 bol"}
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 bol"
+          }
         },
         {
           "id": "haricot_vert",
           "nom": "Haricots verts",
-          "synonymes": ["haricot vert"],
+          "synonymes": [
+            "haricot vert"
+          ],
           "glucides": 7,
           "ig": 30,
-          "cg": 2.1,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "brocoli",
@@ -483,8 +767,11 @@
           "synonymes": [],
           "glucides": 7,
           "ig": 15,
-          "cg": 1.1,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "concombre",
@@ -492,17 +779,26 @@
           "synonymes": [],
           "glucides": 3,
           "ig": 15,
-          "cg": 0.5,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1/3 concombre"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1/3 concombre"
+          }
         },
         {
           "id": "poivron",
           "nom": "Poivron",
-          "synonymes": ["poivron rouge", "poivron vert"],
+          "synonymes": [
+            "poivron rouge",
+            "poivron vert"
+          ],
           "glucides": 6,
           "ig": 15,
-          "cg": 0.9,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1/2 poivron"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1/2 poivron"
+          }
         },
         {
           "id": "aubergine",
@@ -510,35 +806,54 @@
           "synonymes": [],
           "glucides": 6,
           "ig": 15,
-          "cg": 0.9,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "chou_fleur",
           "nom": "Chou-fleur",
-          "synonymes": ["choufleur"],
+          "synonymes": [
+            "choufleur"
+          ],
           "glucides": 5,
           "ig": 15,
-          "cg": 0.8,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "epinard",
           "nom": "Épinards",
-          "synonymes": ["epinard"],
+          "synonymes": [
+            "epinard"
+          ],
           "glucides": 4,
           "ig": 15,
-          "cg": 0.6,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "champignon",
           "nom": "Champignons",
-          "synonymes": ["champignon", "champignon paris"],
+          "synonymes": [
+            "champignon",
+            "champignon paris"
+          ],
           "glucides": 3,
           "ig": 15,
-          "cg": 0.5,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 portion"
+          }
         }
       ]
     },
@@ -550,74 +865,117 @@
         {
           "id": "lait_demi_ecreme",
           "nom": "Lait demi-écrémé",
-          "synonymes": ["lait"],
+          "synonymes": [
+            "lait"
+          ],
           "glucides": 5,
           "ig": 30,
-          "cg": 1.5,
-          "portion_usuelle": {"quantite": 200, "unite": "ml", "description": "1 verre"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "ml",
+            "description": "1 verre"
+          }
         },
         {
           "id": "yaourt_nature",
           "nom": "Yaourt nature",
-          "synonymes": ["yaourt", "yogourt"],
+          "synonymes": [
+            "yaourt",
+            "yogourt"
+          ],
           "glucides": 5,
           "ig": 35,
-          "cg": 1.8,
-          "portion_usuelle": {"quantite": 125, "unite": "g", "description": "1 pot"}
+          "portion_usuelle": {
+            "quantite": 125,
+            "unite": "g",
+            "description": "1 pot"
+          }
         },
         {
           "id": "yaourt_fruits",
           "nom": "Yaourt aux fruits",
-          "synonymes": ["yaourt sucre", "yogourt fruits"],
+          "synonymes": [
+            "yaourt sucre",
+            "yogourt fruits"
+          ],
           "glucides": 17,
           "ig": 35,
-          "cg": 6,
-          "portion_usuelle": {"quantite": 125, "unite": "g", "description": "1 pot"}
+          "portion_usuelle": {
+            "quantite": 125,
+            "unite": "g",
+            "description": "1 pot"
+          }
         },
         {
           "id": "fromage_blanc",
           "nom": "Fromage blanc",
-          "synonymes": ["faisselle"],
+          "synonymes": [
+            "faisselle"
+          ],
           "glucides": 4,
           "ig": 30,
-          "cg": 1.2,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 pot"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 pot"
+          }
         },
         {
           "id": "petit_suisse",
           "nom": "Petit-suisse",
-          "synonymes": ["petit suisse"],
+          "synonymes": [
+            "petit suisse"
+          ],
           "glucides": 5,
           "ig": 30,
-          "cg": 1.5,
-          "portion_usuelle": {"quantite": 60, "unite": "g", "description": "1 pot"}
+          "portion_usuelle": {
+            "quantite": 60,
+            "unite": "g",
+            "description": "1 pot"
+          }
         },
         {
           "id": "fromage_pate_dure",
           "nom": "Fromage à pâte dure",
-          "synonymes": ["emmental", "gruyere", "comte", "fromage"],
+          "synonymes": [
+            "emmental",
+            "gruyere",
+            "comte",
+            "fromage"
+          ],
           "glucides": 1,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "1 portion"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "creme_fraiche",
           "nom": "Crème fraîche",
-          "synonymes": ["creme"],
+          "synonymes": [
+            "creme"
+          ],
           "glucides": 3,
           "ig": 15,
-          "cg": 0.5,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "1 cuillère"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 cuillère"
+          }
         },
         {
           "id": "beurre",
           "nom": "Beurre",
           "synonymes": [],
           "glucides": 1,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 10, "unite": "g", "description": "1 noisette"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 10,
+            "unite": "g",
+            "description": "1 noisette"
+          }
         }
       ]
     },
@@ -629,65 +987,106 @@
         {
           "id": "gateau_chocolat",
           "nom": "Gâteau au chocolat",
-          "synonymes": ["gateau", "moelleux chocolat"],
+          "synonymes": [
+            "gateau",
+            "moelleux chocolat"
+          ],
           "glucides": 55,
           "ig": 65,
-          "cg": 35.8,
-          "portion_usuelle": {"quantite": 80, "unite": "g", "description": "1 part"}
+          "portion_usuelle": {
+            "quantite": 80,
+            "unite": "g",
+            "description": "1 part"
+          }
         },
         {
           "id": "cookie",
           "nom": "Cookie",
-          "synonymes": ["cookies", "biscuit pepites"],
+          "synonymes": [
+            "cookies",
+            "biscuit pepites"
+          ],
           "glucides": 65,
           "ig": 60,
-          "cg": 39,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "1 cookie"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 cookie"
+          }
         },
         {
           "id": "biscuit_sec",
           "nom": "Biscuits secs",
-          "synonymes": ["petit beurre", "sable", "biscuit"],
+          "synonymes": [
+            "petit beurre",
+            "sable",
+            "biscuit"
+          ],
           "glucides": 75,
           "ig": 70,
-          "cg": 52.5,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "3 biscuits"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "3 biscuits"
+          }
         },
         {
           "id": "glace_vanille",
           "nom": "Glace vanille",
-          "synonymes": ["glace", "creme glacee"],
+          "synonymes": [
+            "glace",
+            "creme glacee"
+          ],
           "glucides": 25,
           "ig": 60,
-          "cg": 15,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "2 boules"}
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "2 boules"
+          }
         },
         {
           "id": "chocolat_noir",
           "nom": "Chocolat noir",
-          "synonymes": ["chocolat"],
+          "synonymes": [
+            "chocolat"
+          ],
           "glucides": 45,
           "ig": 25,
-          "cg": 11.3,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "3 carrés"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "3 carrés"
+          }
         },
         {
           "id": "chocolat_lait",
           "nom": "Chocolat au lait",
-          "synonymes": ["chocolat"],
+          "synonymes": [
+            "chocolat"
+          ],
           "glucides": 57,
           "ig": 43,
-          "cg": 24.5,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "3 carrés"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "3 carrés"
+          }
         },
         {
           "id": "confiture",
           "nom": "Confiture",
-          "synonymes": ["marmelade", "gelee"],
+          "synonymes": [
+            "marmelade",
+            "gelee"
+          ],
           "glucides": 60,
           "ig": 65,
-          "cg": 39,
-          "portion_usuelle": {"quantite": 20, "unite": "g", "description": "1 cuillère"}
+          "portion_usuelle": {
+            "quantite": 20,
+            "unite": "g",
+            "description": "1 cuillère"
+          }
         },
         {
           "id": "miel",
@@ -695,71 +1094,117 @@
           "synonymes": [],
           "glucides": 82,
           "ig": 55,
-          "cg": 45.1,
-          "portion_usuelle": {"quantite": 20, "unite": "g", "description": "1 cuillère"}
+          "portion_usuelle": {
+            "quantite": 20,
+            "unite": "g",
+            "description": "1 cuillère"
+          }
         },
         {
           "id": "sucre_blanc",
           "nom": "Sucre blanc",
-          "synonymes": ["sucre"],
+          "synonymes": [
+            "sucre"
+          ],
           "glucides": 100,
           "ig": 70,
-          "cg": 70,
-          "portion_usuelle": {"quantite": 10, "unite": "g", "description": "2 morceaux"}
+          "portion_usuelle": {
+            "quantite": 10,
+            "unite": "g",
+            "description": "2 morceaux"
+          }
         },
         {
           "id": "coca_cola",
           "nom": "Coca-Cola",
-          "synonymes": ["coca", "soda", "cola"],
+          "synonymes": [
+            "coca",
+            "soda",
+            "cola"
+          ],
           "glucides": 11,
           "ig": 65,
-          "cg": 7.2,
-          "portion_usuelle": {"quantite": 250, "unite": "ml", "description": "1 verre"}
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "ml",
+            "description": "1 verre"
+          }
         },
         {
           "id": "jus_orange",
           "nom": "Jus d'orange",
-          "synonymes": ["jus", "nectar orange"],
+          "synonymes": [
+            "jus",
+            "nectar orange"
+          ],
           "glucides": 10,
           "ig": 50,
-          "cg": 5,
-          "portion_usuelle": {"quantite": 200, "unite": "ml", "description": "1 verre"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "ml",
+            "description": "1 verre"
+          }
         },
         {
           "id": "sirop_fruit",
           "nom": "Sirop de fruit",
-          "synonymes": ["sirop", "grenadine", "menthe"],
+          "synonymes": [
+            "sirop",
+            "grenadine",
+            "menthe"
+          ],
           "glucides": 80,
           "ig": 65,
-          "cg": 52,
-          "portion_usuelle": {"quantite": 20, "unite": "ml", "description": "1 dose"}
+          "portion_usuelle": {
+            "quantite": 20,
+            "unite": "ml",
+            "description": "1 dose"
+          }
         },
         {
           "id": "bonbon",
           "nom": "Bonbons",
-          "synonymes": ["bonbon", "fraise tagada", "dragibus"],
+          "synonymes": [
+            "bonbon",
+            "fraise tagada",
+            "dragibus"
+          ],
           "glucides": 85,
           "ig": 70,
-          "cg": 59.5,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "1 petite poignée"}
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 petite poignée"
+          }
         },
         {
           "id": "crepe_nature",
           "nom": "Crêpe nature",
-          "synonymes": ["crepe"],
+          "synonymes": [
+            "crepe"
+          ],
           "glucides": 35,
           "ig": 60,
-          "cg": 21,
-          "portion_usuelle": {"quantite": 60, "unite": "g", "description": "1 crêpe"}
+          "portion_usuelle": {
+            "quantite": 60,
+            "unite": "g",
+            "description": "1 crêpe"
+          }
         },
         {
           "id": "gaufre",
           "nom": "Gaufre",
-          "synonymes": ["gaufre liege", "gaufre bruxelles"],
+          "synonymes": [
+            "gaufre liege",
+            "gaufre bruxelles"
+          ],
           "glucides": 50,
           "ig": 75,
-          "cg": 37.5,
-          "portion_usuelle": {"quantite": 80, "unite": "g", "description": "1 gaufre"}
+          "portion_usuelle": {
+            "quantite": 80,
+            "unite": "g",
+            "description": "1 gaufre"
+          }
         }
       ]
     },
@@ -771,74 +1216,123 @@
         {
           "id": "jambon_blanc",
           "nom": "Jambon blanc",
-          "synonymes": ["jambon", "jambon cuit"],
+          "synonymes": [
+            "jambon",
+            "jambon cuit"
+          ],
           "glucides": 1,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 50, "unite": "g", "description": "2 tranches"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         },
         {
           "id": "jambon_cru",
           "nom": "Jambon cru",
-          "synonymes": ["jambon sec", "serrano"],
+          "synonymes": [
+            "jambon sec",
+            "serrano"
+          ],
           "glucides": 0,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "2 tranches"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "2 tranches"
+          }
         },
         {
           "id": "saucisson",
           "nom": "Saucisson sec",
-          "synonymes": ["saucisson", "salami"],
+          "synonymes": [
+            "saucisson",
+            "salami"
+          ],
           "glucides": 1,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 30, "unite": "g", "description": "5 tranches"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "5 tranches"
+          }
         },
         {
           "id": "poulet",
           "nom": "Poulet rôti",
-          "synonymes": ["poulet", "blanc poulet"],
+          "synonymes": [
+            "poulet",
+            "blanc poulet"
+          ],
           "glucides": 0,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 120, "unite": "g", "description": "1 portion"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 120,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "steak_hache",
           "nom": "Steak haché",
-          "synonymes": ["steak", "boeuf", "viande"],
+          "synonymes": [
+            "steak",
+            "boeuf",
+            "viande"
+          ],
           "glucides": 0,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 steak"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 steak"
+          }
         },
         {
           "id": "saucisse",
           "nom": "Saucisses",
-          "synonymes": ["merguez", "chipolata", "knack"],
+          "synonymes": [
+            "merguez",
+            "chipolata",
+            "knack"
+          ],
           "glucides": 1,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "2 saucisses"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "2 saucisses"
+          }
         },
         {
           "id": "saumon",
           "nom": "Saumon",
-          "synonymes": ["poisson"],
+          "synonymes": [
+            "poisson"
+          ],
           "glucides": 0,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 120, "unite": "g", "description": "1 pavé"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 120,
+            "unite": "g",
+            "description": "1 pavé"
+          }
         },
         {
           "id": "thon",
           "nom": "Thon",
-          "synonymes": ["thon boite", "poisson"],
+          "synonymes": [
+            "thon boite",
+            "poisson"
+          ],
           "glucides": 0,
-          "ig": 0,
-          "cg": 0,
-          "portion_usuelle": {"quantite": 100, "unite": "g", "description": "1 boîte"}
+          "ig": null,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 boîte"
+          }
         }
       ]
     },
@@ -850,65 +1344,101 @@
         {
           "id": "pizza_margherita",
           "nom": "Pizza Margherita",
-          "synonymes": ["pizza", "pizza tomate mozza"],
+          "synonymes": [
+            "pizza",
+            "pizza tomate mozza"
+          ],
           "glucides": 30,
           "ig": 60,
-          "cg": 18,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1/3 pizza"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1/3 pizza"
+          }
         },
         {
           "id": "pizza_4_fromages",
           "nom": "Pizza 4 fromages",
-          "synonymes": ["pizza fromage"],
+          "synonymes": [
+            "pizza fromage"
+          ],
           "glucides": 28,
           "ig": 60,
-          "cg": 16.8,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1/3 pizza"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1/3 pizza"
+          }
         },
         {
           "id": "lasagnes",
           "nom": "Lasagnes bolognaise",
-          "synonymes": ["lasagne"],
+          "synonymes": [
+            "lasagne"
+          ],
           "glucides": 15,
           "ig": 55,
-          "cg": 8.3,
-          "portion_usuelle": {"quantite": 250, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "quiche_lorraine",
           "nom": "Quiche lorraine",
-          "synonymes": ["quiche"],
+          "synonymes": [
+            "quiche"
+          ],
           "glucides": 20,
           "ig": 55,
-          "cg": 11,
-          "portion_usuelle": {"quantite": 150, "unite": "g", "description": "1 part"}
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 part"
+          }
         },
         {
           "id": "chili_con_carne",
           "nom": "Chili con carne",
-          "synonymes": ["chili"],
+          "synonymes": [
+            "chili"
+          ],
           "glucides": 18,
           "ig": 40,
-          "cg": 7.2,
-          "portion_usuelle": {"quantite": 300, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "pot_au_feu",
           "nom": "Pot-au-feu",
-          "synonymes": ["pot au feu"],
+          "synonymes": [
+            "pot au feu"
+          ],
           "glucides": 12,
           "ig": 35,
-          "cg": 4.2,
-          "portion_usuelle": {"quantite": 350, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 350,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "couscous",
           "nom": "Couscous",
-          "synonymes": ["couscous royal"],
+          "synonymes": [
+            "couscous royal"
+          ],
           "glucides": 20,
           "ig": 55,
-          "cg": 11,
-          "portion_usuelle": {"quantite": 350, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 350,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "paella",
@@ -916,8 +1446,11 @@
           "synonymes": [],
           "glucides": 22,
           "ig": 58,
-          "cg": 12.8,
-          "portion_usuelle": {"quantite": 300, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "cassoulet",
@@ -925,35 +1458,54 @@
           "synonymes": [],
           "glucides": 16,
           "ig": 35,
-          "cg": 5.6,
-          "portion_usuelle": {"quantite": 350, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 350,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "blanquette_veau",
           "nom": "Blanquette de veau",
-          "synonymes": ["blanquette"],
+          "synonymes": [
+            "blanquette"
+          ],
           "glucides": 8,
           "ig": 30,
-          "cg": 2.4,
-          "portion_usuelle": {"quantite": 350, "unite": "g", "description": "1 assiette"}
+          "portion_usuelle": {
+            "quantite": 350,
+            "unite": "g",
+            "description": "1 assiette"
+          }
         },
         {
           "id": "hachis_parmentier",
           "nom": "Hachis parmentier",
-          "synonymes": ["hachis"],
+          "synonymes": [
+            "hachis"
+          ],
           "glucides": 12,
           "ig": 60,
-          "cg": 7.2,
-          "portion_usuelle": {"quantite": 250, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "g",
+            "description": "1 portion"
+          }
         },
         {
           "id": "gratin_dauphinois",
           "nom": "Gratin dauphinois",
-          "synonymes": ["gratin pomme terre", "gratin"],
+          "synonymes": [
+            "gratin pomme terre",
+            "gratin"
+          ],
           "glucides": 14,
           "ig": 70,
-          "cg": 9.8,
-          "portion_usuelle": {"quantite": 200, "unite": "g", "description": "1 portion"}
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 portion"
+          }
         }
       ]
     }
