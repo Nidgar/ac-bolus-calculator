@@ -663,7 +663,7 @@
   <div class="no-data-banner" id="noDataBanner" style="display:none">
     <span class="icon">📊</span>
     <h2>Aucune donnée pour l'instant</h2>
-    <p>Utilise le <strong>Mode Simple</strong> pour composer des repas. Chaque aliment validé sera comptabilisé ici automatiquement.</p>
+    <p>Compose tes repas pour que chaque aliment validé soit comptabilisé ici automatiquement.</p>
   </div>
 
   <!-- TOP 5 GLOBAL -->
@@ -1116,7 +1116,7 @@ function render() {
   // Mettre à jour le sous-titre
   const updated = document.getElementById('lastUpdated');
   if (total === 0) {
-    updated.textContent = 'Aucune donnée — utilise le Mode Simple';
+    updated.textContent = 'Aucune donnée — Compose un premier repas';
   } else {
     const meta = getCountsMeta();
     let since = '';
