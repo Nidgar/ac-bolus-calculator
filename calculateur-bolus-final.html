@@ -1857,7 +1857,7 @@
 
 <div class="wrap">
   <header>
-  <div class="headerLeft">
+  <div class="headerLeft" id="easterEggZone" style="cursor:default;user-select:none;">
     <img class="logo" src="assets/img/favicon-96.png" alt="Logo AC BOLUS">
     <div class="titleBlock">
       <h1>AC Bolus</h1>
@@ -1867,7 +1867,7 @@
 
   <div class="headerRight">
     <button id="simpleBtn" class="btn" type="button" aria-pressed="false" aria-label="Activer le mode simple"><span id="simpleBtnIcon" aria-hidden="true">🔭</span> <span id="simpleText">Mode simple</span></button>
-    <a href="top10.html" class="btn btn-ghost" aria-label="Top aliments" title="Top aliments consommés" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;"><span aria-hidden="true">🏆</span></a>
+    <a id="top10Link" href="top10.html" class="btn btn-ghost" aria-label="Top aliments" title="Top aliments consommés" style="display:none;align-items:center;justify-content:center;text-decoration:none;"><span aria-hidden="true">🏆</span></a>
     <button id="settingsBtn" class="btn btn-ghost" type="button" aria-expanded="false" aria-controls="settingsPanel" aria-label="Mes ratios"><span aria-hidden="true">⚙️</span></button>
     <button id="themeBtn" class="btn btn-ghost" type="button" aria-pressed="false" aria-label="Changer le thème"><span id="themeIcon" class="iconSpin" aria-hidden="true"></span></button>
   </div>
@@ -3204,6 +3204,62 @@
     el.themeBtn?.addEventListener("click", toggleTheme);
     el.simpleBtn?.addEventListener("click", toggleSimpleMode);
     el.settingsBtn?.addEventListener("click", toggleSettings);
+
+    // ── Easter egg : 3 clics rapides sur le logo → révèle le lien Top10 ──
+    (function() {
+      const zone    = document.getElementById('easterEggZone');
+      const link    = document.getElementById('top10Link');
+      if (!zone || !link) return;
+
+      let clicks    = 0;
+      let timer     = null;   // timer reset compteur
+      let hideTimer = null;   // timer masquage après 20s
+
+      zone.addEventListener('click', function(e) {
+        // Ne pas interférer si le clic vient d'un enfant interactif
+        if (e.target.closest('a, button')) return;
+
+        clicks++;
+
+        // Feedback visuel discret : micro-pulse sur le logo
+        zone.style.transition = 'opacity 0.08s';
+        zone.style.opacity = '0.6';
+        setTimeout(() => { zone.style.opacity = ''; }, 80);
+
+        // Reset compteur si pas de 3ème clic dans 800ms
+        clearTimeout(timer);
+        timer = setTimeout(() => { clicks = 0; }, 800);
+
+        if (clicks >= 3) {
+          clicks = 0;
+          clearTimeout(timer);
+          clearTimeout(hideTimer);
+
+          // Révéler le lien
+          link.style.display = 'inline-flex';
+
+          // Micro-animation d'apparition
+          link.style.transform = 'scale(0.4)';
+          link.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => { link.style.transform = 'scale(1)'; });
+          });
+
+          // Masquer après 20 secondes
+          hideTimer = setTimeout(() => {
+            link.style.transition = 'opacity 0.4s, transform 0.4s';
+            link.style.opacity = '0';
+            link.style.transform = 'scale(0.6)';
+            setTimeout(() => {
+              link.style.display = 'none';
+              link.style.opacity = '';
+              link.style.transform = '';
+              link.style.transition = '';
+            }, 400);
+          }, 20000);
+        }
+      });
+    })();
 
     // Close settings on Escape
     document.addEventListener("keydown", (e) => {
