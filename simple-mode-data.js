@@ -1,5 +1,5 @@
 /**
- * SIMPLE MODE DATA v3.6 — Source unique : aliments-index.json
+ * SIMPLE MODE DATA v3.7 — Source unique : aliments-index.json
  * ════════════════════════════════════════════════════════════
  *
  * MIGRATION v3.6 (2026-03-01) :
@@ -381,30 +381,31 @@ const SimpleModeDataBuilder = {
 
     // ── BOISSONS ─────────────────────────────────────────────────────────
     SimpleModeData.boissons_petit_dej = p('boissons', [
-      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme',
-      'jus_ananas', 'jus_mangue', 'smoothie_fruits',
-      'lait_amande', 'lait_avoine', 'lait_coco', 'cafe', 'the'
+      'eau', 'eau_gazeuse', 'lait_boisson', 'chocolat_chaud', 'chocolat_froid',
+      'jus_orange', 'jus_pomme', 'jus_ananas', 'jus_mangue', 'smoothie_fruits',
+      'lait_amande', 'lait_avoine', 'lait_coco', 'cafe', 'the', 'the_vert', 'infusion_fruits'
     ]);
 
     // Laits végétaux et fermentés — boissons alternatives petit-déj / goûter
     // (lait_entier, lait_ecreme, lait_soja, kefir sont dans produits_laitiers BDD
     //  mais servis comme boissons → mappés ici via _pick inline)
     const laitsBoissonPdej = [
-      ...p('produits_laitiers', ['lait_entier', 'lait_demi_ecreme', 'lait_ecreme', 'lait_soja', 'kefir'])
+      ...p('produits_laitiers', ['lait_entier', 'lait_demi_ecreme', 'lait_ecreme', 'lait_soja', 'kefir', 'lait_ribot', 'yaourt_a_boire'])
     ];
     SimpleModeData.boissons_petit_dej = [...SimpleModeData.boissons_petit_dej, ...laitsBoissonPdej];
 
     SimpleModeData.boissons_repas = p('boissons', [
-      'eau', 'sirop_fruit', 'coca_cola', 'the_glace', 'limonade',
+      'eau', 'eau_gazeuse', 'sirop_fruit', 'sirop_grenadine', 'coca_cola', 'the_glace', 'limonade',
       'jus_orange', 'jus_pomme', 'jus_raisin', 'jus_tomate',
       'jus_cranberry', 'jus_ananas', 'jus_mangue',
-      'lait_amande', 'lait_avoine', 'kombucha', 'boisson_sportive'
+      'lait_amande', 'lait_avoine', 'kombucha', 'boisson_sportive', 'the_vert'
     ]);
 
     SimpleModeData.boissons_gouter = p('boissons', [
-      'eau', 'lait_boisson', 'chocolat_chaud', 'jus_orange', 'jus_pomme',
-      'jus_raisin', 'jus_ananas', 'jus_mangue', 'smoothie_fruits',
-      'lait_amande', 'lait_avoine', 'lait_coco', 'coca_cola', 'sirop_fruit', 'kombucha'
+      'eau', 'eau_gazeuse', 'lait_boisson', 'chocolat_chaud', 'chocolat_froid',
+      'jus_orange', 'jus_pomme', 'jus_raisin', 'jus_ananas', 'jus_mangue', 'smoothie_fruits',
+      'lait_amande', 'lait_avoine', 'lait_coco', 'coca_cola', 'sirop_fruit', 'sirop_grenadine', 'kombucha',
+      'the_vert', 'infusion_fruits'
     ]);
     SimpleModeData.boissons_gouter = [
       ...SimpleModeData.boissons_gouter,
@@ -413,19 +414,21 @@ const SimpleModeDataBuilder = {
 
     // ── PAINS ─────────────────────────────────────────────────────────────
     SimpleModeData.pains_petit_dej = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle', 'pain_seigle_complet',
-      'biscotte', 'cracotte', 'pain_epices', 'pain_epeautre', 'pain_cereales_multi'
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_mie_complet', 'pain_seigle', 'pain_seigle_complet',
+      'biscotte', 'cracotte', 'pain_epices', 'pain_epeautre', 'pain_cereales_multi',
+      'pain_au_lait', 'blinis'
     ]);
 
     SimpleModeData.pains = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_seigle', 'pain_seigle_complet',
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_mie_complet', 'pain_seigle', 'pain_seigle_complet',
       'pain_campagne', 'biscotte', 'cracotte', 'pain_epeautre', 'pain_cereales_multi',
-      'pain_pita', 'pain_naan', 'bagel', 'tortilla_ble', 'pain_hamburger'
+      'pain_pita', 'pain_naan', 'bagel', 'tortilla_ble', 'pain_hamburger',
+      'blinis', 'bretzel', 'pain_au_lait', 'ficelle'
     ]);
 
     SimpleModeData.pains_gouter = p('pain_cereales', [
-      'pain_blanc', 'pain_complet', 'pain_mie', 'brioche', 'pain_epices',
-      'pain_cereales_multi', 'cracotte', 'pain_seigle_complet'
+      'pain_blanc', 'pain_complet', 'pain_mie', 'pain_mie_complet', 'brioche', 'pain_epices',
+      'pain_cereales_multi', 'cracotte', 'pain_seigle_complet', 'pain_au_lait', 'blinis'
     ]);
 
     // ── PETIT-DÉJEUNER ───────────────────────────────────────────────────
@@ -468,7 +471,7 @@ const SimpleModeDataBuilder = {
 
     // ── FROMAGES ──────────────────────────────────────────────────────────
     SimpleModeData.fromages = p('produits_laitiers', [
-      'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_tartiner', 'creme_fraiche'
+      'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_fondu_individuel', 'fromage_tartiner', 'creme_fraiche'
     ]);
 
     // ── DESSERTS ──────────────────────────────────────────────────────────
@@ -476,7 +479,8 @@ const SimpleModeDataBuilder = {
     const tousLesFruitsFrais = [
       'pomme', 'poire', 'banane', 'orange', 'mandarine',
       'fraise', 'framboise', 'raisin', 'kiwi', 'peche',
-      'melon', 'pasteque', 'abricot', 'cerise', 'ananas', 'mangue', 'myrtille'
+      'melon', 'pasteque', 'abricot', 'cerise', 'ananas', 'mangue', 'myrtille',
+      'litchi', 'grenade', 'papaye', 'kaki', 'fruit_passion',
     ];
 
     SimpleModeData.desserts_fruits = p('fruits', [...tousLesFruitsFrais, 'fruits_secs']);
@@ -488,8 +492,8 @@ const SimpleModeDataBuilder = {
 
     SimpleModeData.desserts_quotidiens = p('produits_laitiers', [
       'yaourt_nature', 'yaourt_fruits', 'yaourt_grec', 'skyr',
-      'fromage_blanc', 'fromage_blanc_0', 'petit_suisse',
-      'compote', 'creme_dessert', 'flan', 'mousse_chocolat', 'riz_lait',
+      'fromage_blanc', 'fromage_blanc_0', 'petit_suisse', 'faisselle',
+      'compote', 'creme_dessert', 'creme_dessert_vanille', 'flan', 'mousse_chocolat', 'riz_lait',
       'creme_anglaise', 'panna_cotta', 'ile_flottante'
     ]);
 
@@ -497,7 +501,9 @@ const SimpleModeDataBuilder = {
     SimpleModeData.desserts_festifs = p('desserts_sucreries', [
       'gateau_chocolat', 'cookie', 'glace_vanille', 'crepe_nature', 'tarte_fruits',
       'brownie', 'muffin', 'tiramisu', 'crumble', 'pain_perdu',
-      'chocolat_noir', 'chocolat_lait', 'bonbon', 'sucre_blanc'
+      'chocolat_noir', 'chocolat_lait', 'bonbon', 'sucre_blanc',
+      'confiture', 'miel',
+      'esquimau_chocolat', 'sorbet_citron', 'gaufre', 'palmier', 'financier'
     ]);
 
     // Pâtisseries françaises (nouvelle section v3.6)
@@ -520,10 +526,11 @@ const SimpleModeDataBuilder = {
     SimpleModeData.gouter_contenu = [
       ...p('desserts_sucreries', [
         'cookie', 'gateau_chocolat', 'barre_cereales', 'madeleine',
-        'quatre_quarts', 'biscuit_sec', 'gaufre'
+        'quatre_quarts', 'biscuit_sec', 'gaufre', 'palmier', 'financier',
+        'esquimau_chocolat', 'sorbet_citron'
       ]),
-      ...p('pain_cereales',     ['croissant']),
-      ...p('produits_laitiers', ['yaourt_fruits', 'compote'])
+      ...p('pain_cereales',     ['croissant', 'pain_au_lait', 'blinis']),
+      ...p('produits_laitiers', ['yaourt_fruits', 'compote', 'yaourt_a_boire', 'faisselle'])
     ];
 
     SimpleModeData.gouter_garniture = m([
