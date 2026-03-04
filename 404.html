@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="color-scheme" content="dark"/>
+  <title>AC Bolus — Erreur 404</title>
+  <link rel="icon" href="favicon32.png"/>
+  <meta name="theme-color" content="#6ee7ff"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", sans-serif;
+      background:
+        radial-gradient(700px 350px at 15% 0%,  rgba(167,139,250,.22), transparent 60%),
+        radial-gradient(500px 300px at 85% 5%, rgba(110,231,255,.18), transparent 60%),
+        #0b1220;
+      background-attachment: fixed;
+      color: rgba(255,255,255,.92);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+    }
+
+    /* ── En-tête ── */
+    .header { text-align: center; margin-bottom: 24px; }
+    .header-icon { font-size: 64px; line-height: 1; margin-bottom: 12px; }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 900;
+      margin: 0 0 8px;
+      background: linear-gradient(135deg, #6ee7ff, #a78bfa, #34d399, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,.45);
+      margin: 0 0 6px;
+    }
+
+    .tagline {
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,.75);
+      margin: 0;
+    }
+
+    /* ── Roue ── */
+    .wheel-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      width: 0;
+      height: 0;
+      border-left: 14px solid transparent;
+      border-right: 14px solid transparent;
+      border-top: 28px solid #fbbf24;
+      filter: drop-shadow(0 2px 10px rgba(251,191,36,.85));
+    }
+
+    #wheelDisc {
+      display: block;
+      border-radius: 50%;
+      box-shadow:
+        0 0 60px rgba(110,231,255,.28),
+        0 0 120px rgba(167,139,250,.14);
+      transition: none;
+    }
+
+    #wheelDisc.spinning {
+      transition: transform 3.6s cubic-bezier(.17,.67,.12,.99);
+    }
+
+    /* ── Bouton spin ── */
+    #spinBtn {
+      margin-bottom: 24px;
+      padding: 14px 40px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, #6ee7ff, #a78bfa);
+      color: #0b1220;
+      font-family: inherit;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 28px rgba(110,231,255,.45);
+      transition: all .3s;
+      letter-spacing: .3px;
+    }
+
+    #spinBtn:disabled {
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.35);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    #spinBtn:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 36px rgba(110,231,255,.55);
+    }
+
+    /* ── Carte résultat ── */
+    #resultCard {
+      display: none;
+      background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border-radius: 20px;
+      padding: 22px 28px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 24px;
+      animation: pop .4s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    .res-emoji { font-size: 56px; margin-bottom: 10px; }
+    .res-label { font-size: 22px; font-weight: 900; margin-bottom: 10px; }
+    .res-info  { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,.82); margin-bottom: 14px; }
+
+    .res-badge {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      border-radius: 12px;
+      padding: 9px 20px;
+      font-size: 13px;
+    }
+
+    .res-badge .ig-num {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .res-badge .ig-muted {
+      color: rgba(255,255,255,.45);
+      font-size: 12px;
+    }
+
+    /* ── Légende ── */
+    .legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 12px;
+      color: rgba(255,255,255,.45);
+      margin-bottom: 36px;
+    }
+
+    /* ── Bouton retour ── */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(110,231,255,.25);
+      color: #6ee7ff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all .2s;
+    }
+
+    .back-btn:hover {
+      background: rgba(110,231,255,.08);
+      border-color: rgba(110,231,255,.5);
+    }
+
+    /* ── Animations ── */
+    @keyframes pop {
+      from { opacity: 0; transform: scale(.85) translateY(14px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0);    }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Compteur ── */
+    .spin-counter {
+      font-size: 11px;
+      color: rgba(255,255,255,.3);
+      margin-top: 8px;
+      margin-bottom: 20px;
+      min-height: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- En-tête -->
+  <div class="header">
+    <div class="header-icon">🎡</div>
+    <h1>Erreur 404</h1>
+    <p class="subtitle">Cette page a disparu… comme du sucre dans le sang 🩸</p>
+    <p class="tagline">Tourne la roue et teste tes connaissances glucidiques !</p>
+  </div>
+
+  <!-- Roue -->
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <svg id="wheelDisc" width="300" height="300" viewBox="0 0 300 300" aria-label="Roue des aliments et leur indice glycémique"></svg>
+  </div>
+
+  <div class="spin-counter" id="spinCounter"></div>
+
+  <!-- Bouton -->
+  <button id="spinBtn" type="button">🎯 Faire tourner la roue !</button>
+
+  <!-- Résultat -->
+  <div id="resultCard" role="status" aria-live="polite">
+    <div class="res-emoji" id="resEmoji"></div>
+    <div class="res-label" id="resLabel"></div>
+    <p class="res-info" id="resInfo"></p>
+    <div class="res-badge" id="resBadge">
+      <span class="ig-muted">IG</span>
+      <span class="ig-num" id="resIgNum"></span>
+      <span id="resIgBadge"></span>
+    </div>
+  </div>
+
+  <!-- Légende -->
+  <div class="legend">
+    <span>🟢 IG bas &lt; 55</span>
+    <span>🟡 IG moyen 55–69</span>
+    <span>🔴 IG élevé ≥ 70</span>
+  </div>
+
+  <!-- Retour -->
+  <a href="calculateur-bolus-final.html" class="back-btn">← Retour à AC Bolus</a>
+
+  <script>
+    // ════════════════════════════════════════
+    // Données des segments
+    // ════════════════════════════════════════
+    const SEGS = [
+      { emoji:"🍎", label:"Pomme",        ig:38, info:"IG bas (38) — Les fibres de la pomme ralentissent l'absorption du sucre. Idéal pour la glycémie !",   color:"#34d399" },
+      { emoji:"🍞", label:"Pain blanc",   ig:75, info:"IG élevé (75) — Le pain blanc fait monter la glycémie rapidement. Préfère le pain complet ou au levain.",  color:"#fb7185" },
+      { emoji:"🥕", label:"Carotte",      ig:39, info:"IG bas (39) — Crue c'est encore mieux (IG ≈ 16) ! Les carottes sont riches en bêta-carotène. 🥕",       color:"#6ee7ff" },
+      { emoji:"🍫", label:"Choco noir",   ig:25, info:"IG très bas (25) — Le chocolat noir >70% contient des flavonoïdes et est l'ami du diabétique !",         color:"#a78bfa" },
+      { emoji:"🍚", label:"Riz blanc",    ig:72, info:"IG élevé (72) — Préfère le riz basmati (IG 50) ou le riz complet (IG 55) pour un meilleur contrôle.",  color:"#fbbf24" },
+      { emoji:"🥦", label:"Brocoli",      ig:15, info:"IG ultra bas (15) — Les légumes verts sont tes super-héros glycémiques ! Mange-en sans compter.",         color:"#34d399" },
+      { emoji:"🍯", label:"Miel",         ig:58, info:"IG moyen (58) — Plus naturel que le sucre blanc, mais reste du sucre. 1 cuillère à café max à la fois.",  color:"#f97316" },
+      { emoji:"🥛", label:"Lait",         ig:32, info:"IG bas (32) — Les protéines et graisses du lait modèrent la montée glycémique. Un bon choix !",           color:"#6ee7ff" },
+      { emoji:"🍌", label:"Banane",       ig:52, info:"IG moyen (52) — La banane mûre a un IG plus élevé (65). Préfère-la légèrement verte pour ton sucre !",   color:"#fbbf24" },
+      { emoji:"🥜", label:"Arachides",    ig:14, info:"IG très bas (14) — Les arachides sont riches en protéines et graisses saines. Parfait en collation !",   color:"#34d399" },
+      { emoji:"🍕", label:"Pizza",        ig:60, info:"IG moyen/élevé (~60) — La pizza combine glucides et graisses. La glycémie monte lentement mais dure !",   color:"#fb7185" },
+      { emoji:"🥚", label:"Œuf",          ig: 0, info:"IG 0 — Les œufs ne contiennent presque pas de glucides. Ils n'impactent pas du tout ta glycémie !",       color:"#a78bfa" },
+    ];
+
+    const N  = SEGS.length;
+    const SA = 360 / N;       // angle par segment en degrés
+    const CX = 150, CY = 150, R = 138;
+
+    // ════════════════════════════════════════
+    // Construction de la roue SVG
+    // ════════════════════════════════════════
+    function buildWheel() {
+      const svg = document.getElementById('wheelDisc');
+
+      SEGS.forEach((seg, i) => {
+        const startDeg = i * SA - 90;
+        const endDeg   = (i + 1) * SA - 90;
+        const s = startDeg * Math.PI / 180;
+        const e = endDeg   * Math.PI / 180;
+
+        const x1 = CX + R * Math.cos(s), y1 = CY + R * Math.sin(s);
+        const x2 = CX + R * Math.cos(e), y2 = CY + R * Math.sin(e);
+        const mid = (s + e) / 2;
+        const tx  = CX + R * 0.64 * Math.cos(mid);
+        const ty  = CY + R * 0.64 * Math.sin(mid);
+
+        // Secteur
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M${CX} ${CY} L${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}Z`);
+        path.setAttribute('fill', seg.color);
+        path.setAttribute('stroke', 'rgba(11,18,32,.85)');
+        path.setAttribute('stroke-width', '2.5');
+        svg.appendChild(path);
+
+        // Emoji
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', tx);
+        txt.setAttribute('y', ty);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('dominant-baseline', 'middle');
+        txt.setAttribute('font-size', '20');
+        txt.style.userSelect = 'none';
+        txt.textContent = seg.emoji;
+        svg.appendChild(txt);
+      });
+
+      // Centre
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', CX); circle.setAttribute('cy', CY); circle.setAttribute('r', 22);
+      circle.setAttribute('fill', '#0b1220');
+      circle.setAttribute('stroke', 'rgba(110,231,255,.5)');
+      circle.setAttribute('stroke-width', '3');
+      svg.appendChild(circle);
+
+      const centerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      centerTxt.setAttribute('x', CX); centerTxt.setAttribute('y', CY + 1);
+      centerTxt.setAttribute('text-anchor', 'middle'); centerTxt.setAttribute('dominant-baseline', 'middle');
+      centerTxt.setAttribute('font-size', '16');
+      centerTxt.textContent = '🩸';
+      svg.appendChild(centerTxt);
+    }
+
+    // ════════════════════════════════════════
+    // Logique de spin
+    // ════════════════════════════════════════
+    let currentRot  = 0;
+    let spinning    = false;
+    let spinCount   = 0;
+
+    const disc      = document.getElementById('wheelDisc');
+    const btn       = document.getElementById('spinBtn');
+    const card      = document.getElementById('resultCard');
+    const counter   = document.getElementById('spinCounter');
+
+    function igLabel(ig) {
+      if (ig === 0)  return '⚪ Nul';
+      if (ig < 55)   return '🟢 Bas';
+      if (ig < 70)   return '🟡 Moyen';
+      return '🔴 Élevé';
+    }
+
+    function showResult(seg) {
+      document.getElementById('resEmoji').textContent  = seg.emoji;
+      document.getElementById('resLabel').textContent  = seg.label;
+      document.getElementById('resInfo').textContent   = seg.info;
+      document.getElementById('resIgNum').textContent  = seg.ig;
+      document.getElementById('resIgBadge').textContent = igLabel(seg.ig);
+
+      // Couleur dynamique de la carte
+      card.style.border     = `1.5px solid ${seg.color}55`;
+      card.style.boxShadow  = `0 0 35px ${seg.color}28`;
+      document.getElementById('resBadge').style.background = `${seg.color}18`;
+      document.getElementById('resBadge').style.border     = `1px solid ${seg.color}35`;
+      document.getElementById('resLabel').style.color      = seg.color;
+      document.getElementById('resIgNum').style.color      = seg.color;
+
+      card.style.display = 'block';
+      // Re-déclencher l'animation
+      card.style.animation = 'none';
+      card.offsetHeight; // reflow
+      card.style.animation = 'pop .4s cubic-bezier(.34,1.56,.64,1)';
+    }
+
+    function doSpin() {
+      if (spinning) return;
+      spinning = true;
+      card.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '⏳ La roue tourne…';
+
+      const extra  = Math.random() * 360;
+      const newRot = currentRot + 5 * 360 + extra;
+
+      disc.classList.add('spinning');
+      disc.style.transform = `rotate(${newRot}deg)`;
+
+      setTimeout(() => {
+        // Calcul du segment pointé (pointeur en haut = 270° sur le disque)
+        const norm    = ((newRot % 360) + 360) % 360;
+        const pointed = (360 - norm + 270) % 360;
+        const idx     = Math.floor(pointed / SA) % N;
+
+        currentRot = newRot;
+        spinning   = false;
+        spinCount++;
+
+        disc.classList.remove('spinning');
+        btn.disabled = false;
+        btn.textContent = '🔄 Encore une fois !';
+        counter.textContent = `Tour n°${spinCount}`;
+
+        showResult(SEGS[idx]);
+      }, 3650);
+    }
+
+    // ════════════════════════════════════════
+    // Init
+    // ════════════════════════════════════════
+    buildWheel();
+    btn.addEventListener('click', doSpin);
+
+    // Easter egg console 😄
+    console.log('🎡 AC Bolus — Page 404 chargée ! Tu as tourné la roue', spinCount, 'fois.');
+  </script>
+
+</body>
+</html>
