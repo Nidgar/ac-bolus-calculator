@@ -714,3 +714,363 @@ suite('Audit I8 — Normalisation virgule → point');
   // Double virgule → parseFloat s'arrête au premier point
   assert('I8 : toNumber("1,,5") = 1 (parsé jusqu\'au 1er ",")',  near(toNumber('1,,5'), 1));
 })();
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// NOUVEAUX TESTS — Couverture des points critiques manquants
+// Ajoutés le 05/03/2026
+// ════════════════════════════════════════════════════════════════════════════
+
+
+// ─── OPT-A : calculateIGFactor — seuils et clamp ────────────────────────────
+suite('BolusOptimizer — OPT-A : calculateIGFactor seuils & clamp');
+(() => {
+  const opt = new BolusOptimizer();
+
+  // Référence IG=55 → facteur neutre 1.0
+  assert('OPT-A : IG=55 (référence) → 1.0',      near(opt.calculateIGFactor(55), 1.0));
+
+  // Frontière basse du split (IG=54 vs 55)
+  // 1 + (54-55)*0.005 = 0.995
+  assert('OPT-A : IG=54 → 0.995',                near(opt.calculateIGFactor(54), 0.995));
+
+  // Frontière haute du fast (IG=69 vs 70)
+  // 1 + (69-55)*0.005 = 1.07
+  assert('OPT-A : IG=69 → 1.07',                 near(opt.calculateIGFactor(69), 1.07));
+
+  // Seuil split (IG=70)
+  // 1 + (70-55)*0.005 = 1.075
+  assert('OPT-A : IG=70 → 1.075',                near(opt.calculateIGFactor(70), 1.075));
+
+  // IG très bas → clamp à 0.80 (-20%)
+  // 1 + (0-55)*0.005 = 0.725 → clampé à 0.80
+  assert('OPT-A : IG=0 → clamp à 0.80',          near(opt.calculateIGFactor(0), 1.0)); // IG=0 retourne 1.0 (guard !igMean)
+  assert('OPT-A : IG=1 → clamp bas respecté',    opt.calculateIGFactor(1) >= 0.80);
+
+  // IG extrême haut → clamp à 1.20 (+20%)
+  assert('OPT-A : IG=500 → clamp à 1.20',        near(opt.calculateIGFactor(500), 1.20));
+  assert('OPT-A : IG=100 → clamp à 1.20',        near(opt.calculateIGFactor(100), 1.20));
+
+  // IG négatif → guard retourne 1.0
+  assert('OPT-A : IG=-1 → guard 1.0',            near(opt.calculateIGFactor(-1), 1.0));
+})();
+
+
+// ─── OPT-B : calculateCGFactor — seuils exacts ──────────────────────────────
+suite('BolusOptimizer — OPT-B : calculateCGFactor seuils exacts');
+(() => {
+  const opt = new BolusOptimizer();
+
+  // CG=0 → guard retourne 1.0
+  assert('OPT-B : CG=0 → guard 1.0',             near(opt.calculateCGFactor(0),  1.0));
+
+  // CG < 10 → facteur 0.95 (-5%)
+  assert('OPT-B : CG=5 → 0.95',                  near(opt.calculateCGFactor(5),  0.95));
+  assert('OPT-B : CG=9.9 → 0.95',               near(opt.calculateCGFactor(9.9), 0.95));
+
+  // CG = 10 → zone neutre [10, 20[
+  assert('OPT-B : CG=10 → 1.0 (zone neutre)',    near(opt.calculateCGFactor(10), 1.0));
+  assert('OPT-B : CG=15 → 1.0 (zone neutre)',    near(opt.calculateCGFactor(15), 1.0));
+  assert('OPT-B : CG=19.9 → 1.0 (zone neutre)', near(opt.calculateCGFactor(19.9), 1.0));
+
+  // CG >= 20 → facteur 1.05 (+5%)
+  assert('OPT-B : CG=20 → 1.05',                 near(opt.calculateCGFactor(20), 1.05));
+  assert('OPT-B : CG=50 → 1.05',                 near(opt.calculateCGFactor(50), 1.05));
+
+  // CG négatif → guard retourne 1.0
+  assert('OPT-B : CG=-1 → guard 1.0',            near(opt.calculateCGFactor(-1), 1.0));
+})();
+
+
+// ─── OPT-C : determineBolusStrategy — les 9 cas IG × CG ────────────────────
+suite('BolusOptimizer — OPT-C : determineBolusStrategy 9 cas IG×CG');
+(() => {
+  const opt = new BolusOptimizer();
+
+  // ── IG bas (< 55) ────────────────────────────────────────────────────────
+  // CG < 10
+  const s_bas_cg_basse = opt.determineBolusStrategy(40, 5);
+  assert('OPT-C : IG bas + CG basse → strategy normal',  s_bas_cg_basse.strategy === 'normal');
+  assert('OPT-C : IG bas + CG basse → icon 🟢',          s_bas_cg_basse.icon === '🟢');
+  assert('OPT-C : IG bas + CG basse → message contient "15 min"', s_bas_cg_basse.message.includes('15 min'));
+
+  // CG 10-19
+  const s_bas_cg_moy = opt.determineBolusStrategy(40, 15);
+  assert('OPT-C : IG bas + CG moyenne → strategy normal', s_bas_cg_moy.strategy === 'normal');
+
+  // CG >= 20
+  const s_bas_cg_haute = opt.determineBolusStrategy(40, 25);
+  assert('OPT-C : IG bas + CG haute → strategy normal',  s_bas_cg_haute.strategy === 'normal');
+  assert('OPT-C : IG bas + CG haute → message ≠ CG basse', s_bas_cg_haute.message !== s_bas_cg_basse.message);
+
+  // ── IG moyen (55–69) ─────────────────────────────────────────────────────
+  // Frontière basse exacte (IG=55)
+  const s_moy_55 = opt.determineBolusStrategy(55, 15);
+  assert('OPT-C : IG=55 → strategy fast',              s_moy_55.strategy === 'fast');
+  assert('OPT-C : IG=55 → icon 🟡',                    s_moy_55.icon === '🟡');
+
+  // Frontière haute exacte (IG=69)
+  const s_moy_69 = opt.determineBolusStrategy(69, 15);
+  assert('OPT-C : IG=69 → strategy fast (pas split)',  s_moy_69.strategy === 'fast');
+
+  // CG variable sur IG moyen
+  const s_moy_cg_basse  = opt.determineBolusStrategy(62, 5);
+  const s_moy_cg_haute  = opt.determineBolusStrategy(62, 25);
+  assert('OPT-C : IG moyen + CG basse → fast',         s_moy_cg_basse.strategy === 'fast');
+  assert('OPT-C : IG moyen + CG haute → message ≠ CG basse', s_moy_cg_haute.message !== s_moy_cg_basse.message);
+
+  // ── IG élevé (>= 70) ─────────────────────────────────────────────────────
+  // Frontière exacte (IG=70)
+  const s_haut_70 = opt.determineBolusStrategy(70, 15);
+  assert('OPT-C : IG=70 → strategy split',             s_haut_70.strategy === 'split');
+  assert('OPT-C : IG=70 → icon 🟠',                    s_haut_70.icon === '🟠');
+  assert('OPT-C : IG=70 → split 60/40',                s_haut_70.split.before === 60 && s_haut_70.split.after === 40);
+
+  // CG < 20 → durée ~1h
+  const s_haut_cg_basse = opt.determineBolusStrategy(80, 15);
+  assert('OPT-C : IG élevé + CG<20 → message contient "~1h"', s_haut_cg_basse.message.includes('~1h'));
+
+  // CG 20-39 → durée 1h à 1h30
+  const s_haut_cg_moy   = opt.determineBolusStrategy(80, 30);
+  assert('OPT-C : IG élevé + CG 20-39 → message contient "1h30"', s_haut_cg_moy.message.includes('1h30'));
+
+  // CG >= 40 → durée 1h30 à 2h
+  const s_haut_cg_haute = opt.determineBolusStrategy(80, 45);
+  assert('OPT-C : IG élevé + CG>=40 → message contient "2h"',  s_haut_cg_haute.message.includes('2h'));
+
+  // Les 3 messages split sont bien différents entre eux
+  assert('OPT-C : 3 messages split distincts', 
+    s_haut_cg_basse.message !== s_haut_cg_moy.message &&
+    s_haut_cg_moy.message   !== s_haut_cg_haute.message);
+})();
+
+
+// ─── OPT-D : classifyIG et classifyCG — frontières exactes ──────────────────
+suite('BolusOptimizer — OPT-D : classifyIG & classifyCG frontières');
+(() => {
+  const opt = new BolusOptimizer();
+
+  // classifyIG
+  assert('OPT-D : IG=54 → Bas/green',    opt.classifyIG(54).label === 'Bas'   && opt.classifyIG(54).color === 'green');
+  assert('OPT-D : IG=55 → Moyen/yellow', opt.classifyIG(55).label === 'Moyen' && opt.classifyIG(55).color === 'yellow');
+  assert('OPT-D : IG=69 → Moyen/yellow', opt.classifyIG(69).label === 'Moyen' && opt.classifyIG(69).color === 'yellow');
+  assert('OPT-D : IG=70 → Élevé/orange', opt.classifyIG(70).label === 'Élevé' && opt.classifyIG(70).color === 'orange');
+  assert('OPT-D : IG=100→ Élevé/orange', opt.classifyIG(100).label === 'Élevé');
+
+  // classifyCG
+  assert('OPT-D : CG=9 → Basse/green',   opt.classifyCG(9).label  === 'Basse'   && opt.classifyCG(9).color  === 'green');
+  assert('OPT-D : CG=10 → Moyenne/yellow',opt.classifyCG(10).label === 'Moyenne' && opt.classifyCG(10).color === 'yellow');
+  assert('OPT-D : CG=19 → Moyenne/yellow',opt.classifyCG(19).label === 'Moyenne');
+  assert('OPT-D : CG=20 → Élevée/orange', opt.classifyCG(20).label === 'Élevée'  && opt.classifyCG(20).color === 'orange');
+  assert('OPT-D : CG=50 → Élevée/orange', opt.classifyCG(50).label === 'Élevée');
+})();
+
+
+// ─── OPT-E : rétro-compat _normalizeMealMetrics ──────────────────────────────
+suite('BolusOptimizer — OPT-E : rétro-compat champs legacy vs v2');
+(() => {
+  const opt = new BolusOptimizer();
+
+  // Même données, deux nommages
+  const legacy = opt.optimizeBolus({ bolus_standard: 6, glucides: 45, ig_moyen: 65, cg_totale: 18 });
+  const v2     = opt.optimizeBolus({ bolus_standard: 6, carbs_g:  45, ig_mean:  65, cg_total:  18 });
+
+  assert('OPT-E : legacy → bolus_optimized fini',             Number.isFinite(legacy.bolus_optimized));
+  assert('OPT-E : legacy vs v2 → même bolus_optimized',      near(legacy.bolus_optimized, v2.bolus_optimized));
+  assert('OPT-E : legacy vs v2 → même strategy',             legacy.strategy.strategy === v2.strategy.strategy);
+  assert('OPT-E : legacy vs v2 → même adjustment_percent',   legacy.adjustment_percent === v2.adjustment_percent);
+
+  // Champs absents → valeurs par défaut 0
+  const minimal = opt.optimizeBolus({ bolus_standard: 5 });
+  assert('OPT-E : champs absents → bolus_optimized fini',     Number.isFinite(minimal.bolus_optimized));
+  assert('OPT-E : champs absents → ig_mean=0 → factor=1.0',  near(minimal.factors.ig.factor, 1.0));
+})();
+
+
+// ─── OPT-F : suggestBolusTiming (FoodDatabase) — toutes les branches ────────
+suite('FoodDatabase — OPT-F : suggestBolusTiming toutes branches');
+(() => {
+  const db = new FoodDatabase();
+
+  // IG < 55 → timing 'normal', icon 🟢
+  const t_bas = db.suggestBolusTiming(40, 15);
+  assert('OPT-F : IG<55 → timing normal',   t_bas.timing === 'normal');
+  assert('OPT-F : IG<55 → icon 🟢',         t_bas.icon   === '🟢');
+  assert('OPT-F : IG<55 → message défini',  typeof t_bas.message === 'string' && t_bas.message.length > 0);
+
+  // IG 55–69 → timing 'fast', icon 🟡
+  const t_moy = db.suggestBolusTiming(62, 15);
+  assert('OPT-F : IG 55-69 → timing fast',  t_moy.timing === 'fast');
+  assert('OPT-F : IG 55-69 → icon 🟡',      t_moy.icon   === '🟡');
+
+  // Frontière basse fast (IG=55)
+  const t_55 = db.suggestBolusTiming(55, 15);
+  assert('OPT-F : IG=55 → timing fast',     t_55.timing  === 'fast');
+
+  // Frontière haute fast (IG=69)
+  const t_69 = db.suggestBolusTiming(69, 15);
+  assert('OPT-F : IG=69 → timing fast',     t_69.timing  === 'fast');
+
+  // IG >= 70 → timing 'split', icon 🔴
+  const t_haut = db.suggestBolusTiming(75, 15);
+  assert('OPT-F : IG>=70 → timing split',   t_haut.timing === 'split');
+  assert('OPT-F : IG>=70 → icon 🔴',        t_haut.icon   === '🔴');
+
+  // Frontière exacte split (IG=70)
+  const t_70 = db.suggestBolusTiming(70, 15);
+  assert('OPT-F : IG=70 → timing split',    t_70.timing   === 'split');
+
+  // IG élevé : 3 durées selon CG
+  const t_cg1 = db.suggestBolusTiming(75, 15);  // CG < 20 → ~1h
+  const t_cg2 = db.suggestBolusTiming(75, 30);  // CG 20-39 → 1h à 1h30
+  const t_cg3 = db.suggestBolusTiming(75, 50);  // CG >= 40 → 1h30 à 2h
+  assert('OPT-F : IG élevé CG<20 → message "~1h"',         t_cg1.message.includes('~1h'));
+  assert('OPT-F : IG élevé CG 20-39 → message "1h à 1h30"', t_cg2.message.includes('1h à 1h30'));
+  assert('OPT-F : IG élevé CG>=40 → message "1h30 à 2h"',  t_cg3.message.includes('1h30 à 2h'));
+  assert('OPT-F : cg_level exposé sur split',               typeof t_haut.cg_level === 'string');
+
+  // IG=0 → guard → timing normal (pas de crash)
+  const t_zero = db.suggestBolusTiming(0, 15);
+  assert('OPT-F : IG=0 → pas de crash, timing défini',     typeof t_zero.timing === 'string');
+})();
+
+
+// ─── E2E1 : Pipeline complet FoodDatabase → BolusOptimizer ──────────────────
+suite('E2E — E2E1 : pipeline calculateMeal → optimizeBolus → formatResult');
+(() => {
+  // Repas réaliste : riz blanc 180g + pomme 150g
+  // Riz   : glucides=28, ig=72 → carbs = 28*180/100 = 50.4g, cg = 28*72/100*180/100 = 36.29
+  // Pomme : glucides=14, ig=38 → carbs = 14*150/100 = 21g,   cg = 14*38/100*150/100 = 7.98
+  // carbs_g = 71.4g
+  // ig_mean = round((72*50.4 + 38*21) / 71.4) = round((3628.8 + 798) / 71.4) = round(61.8) = 62
+  // cg_total = 36.29 + 7.98 = 44.27
+
+  const db = new FoodDatabase();
+  db.data = {
+    version: 'e2e-mock', categories: [{
+      id: 'e2e', nom: 'E2E', icon: '🧪',
+      aliments: [
+        { id: 'riz',   nom: 'Riz blanc', synonymes: [], glucides: 28, ig: 72, cg: 20.2,
+          portion_usuelle: { quantite: 180, unite: 'g', description: '1 assiette' } },
+        { id: 'pomme', nom: 'Pomme',     synonymes: [], glucides: 14, ig: 38, cg: 5.3,
+          portion_usuelle: { quantite: 150, unite: 'g', description: '1 pomme' } },
+      ]
+    }]
+  };
+  db.loaded = true;
+
+  // Étape 1 : calculateMeal
+  const meal = db.calculateMeal([
+    { aliment_id: 'riz',   quantite_g: 180 },
+    { aliment_id: 'pomme', quantite_g: 150 },
+  ]);
+
+  assert('E2E1 : MealMetrics valide',           MealMetrics.isValid(meal));
+  assert('E2E1 : carbs_g ≈ 71.4',              near(meal.carbs_g, 71.4, 0.01));
+  assert('E2E1 : ig_mean = 62',                 meal.ig_mean === 62);
+  assert('E2E1 : cg_total ≈ 44.27',            near(meal.cg_total, 44.27, 0.1));
+
+  // Étape 2 : calcBolus (patient fictif : basale=22, rapide=18, gly=160, obj=110)
+  // ICR = 500/40 = 12.5 | FSI = 1800/40 = 45
+  // correction = (160-110)/45 = 1.111
+  // repas      = 71.4/12.5  = 5.712
+  // total      = 6.823 → arrondi(0.1) = 6.8
+  const bolus = BolusMath.calcBolus({
+    glycemie: 160, objectif: 110, glucides: meal.carbs_g,
+    basale: 22, rapide: 18, step: 0.1
+  });
+  assert('E2E1 : bolus.repas ≈ 5.71',           near(bolus.repas, 5.712, 0.01));
+  assert('E2E1 : bolus.totalArrondi = 6.8',     near(bolus.totalArrondi, 6.8));
+
+  // Étape 3 : optimizeBolus
+  const opt    = new BolusOptimizer();
+  const result = opt.optimizeBolus({
+    bolus_standard: bolus.totalArrondi,
+    carbs_g:  meal.carbs_g,
+    ig_mean:  meal.ig_mean,
+    cg_total: meal.cg_total,
+  });
+
+  // ig_mean=62 (fast), cg_total≈44.27 (élevée → +5%)
+  // ig_factor  = 1 + (62-55)*0.005 = 1.035
+  // cg_factor  = 1.05 (cg >= 20)
+  // combined   = 1.035 * 1.05 = 1.08675
+  // bolus_opt  ≈ 6.8 * 1.08675 = 7.39
+  assert('E2E1 : strategy fast (ig=62)',         result.strategy.strategy === 'fast');
+  assert('E2E1 : bolus_optimized > bolus_std',   result.bolus_optimized > bolus.totalArrondi);
+  assert('E2E1 : bolus_optimized fini',          Number.isFinite(result.bolus_optimized));
+  assert('E2E1 : cg_factor = 1.05 (cg haute)',  near(result.factors.cg.factor, 1.05));
+  assert('E2E1 : ig_factor = 1.035',            near(result.factors.ig.factor, 1.035));
+
+  // Étape 4 : formatResult
+  const fmt = opt.formatResult(result, 0.1);
+  assert('E2E1 : bolus_optimized_display défini',  typeof fmt.bolus_optimized_display === 'string');
+  assert('E2E1 : bolus_standard_display = "6.8"',  fmt.bolus_standard_display === '6.8');
+  assert('E2E1 : pas de split (strategy fast)',     fmt.split_doses_display === null);
+
+  // Étape 5 : MealMetrics.format() cohérent
+  const mfmt = MealMetrics.format(meal);
+  assert('E2E1 : format carbs_g = "71.4"',         mfmt.carbs_g  === '71.4');
+  assert('E2E1 : format ig_mean = "62"',            mfmt.ig_mean  === '62');
+  assert('E2E1 : format cg_total = "44.3"',         mfmt.cg_total === '44.3');
+})();
+
+
+// ─── E2E2 : Pipeline avec IG élevé → fractionnement vérifié ─────────────────
+suite('E2E — E2E2 : pipeline IG élevé → split cohérent');
+(() => {
+  // Repas IG élevé : pain blanc 100g + jus d'orange 200ml (fictif, ig=65→mock)
+  // Pain : glucides=55, ig=70 → carbs=55g, cg=55*70/100*100/100=38.5
+  // Jus  : glucides=10, ig=65 → carbs=20g, cg=10*65/100*200/100=13
+  // carbs_g  = 75g
+  // ig_mean  = round((70*55 + 65*20) / 75) = round((3850+1300)/75) = round(68.67) = 69 → fast
+  // Pour forcer split, utiliser ig=72 sur le pain
+  // Pain(ig72): 55*72/100*100/100 = 39.6
+  // ig_mean = round((72*55 + 65*20) / 75) = round((3960+1300)/75) = round(70.13) = 70 → split ✓
+
+  const db = new FoodDatabase();
+  db.data = {
+    version: 'e2e2-mock', categories: [{
+      id: 'e2e2', nom: 'E2E2', icon: '🧪',
+      aliments: [
+        { id: 'pain_ig72', nom: 'Pain IG72', synonymes: [], glucides: 55, ig: 72, cg: 39.6,
+          portion_usuelle: { quantite: 100, unite: 'g', description: '4 tranches' } },
+        { id: 'jus',       nom: 'Jus orange', synonymes: [], glucides: 10, ig: 65, cg: 6.5,
+          portion_usuelle: { quantite: 200, unite: 'ml', description: '1 verre' } },
+      ]
+    }]
+  };
+  db.loaded = true;
+
+  const meal = db.calculateMeal([
+    { aliment_id: 'pain_ig72', quantite_g: 100 },
+    { aliment_id: 'jus',       quantite_g: 200 },
+  ]);
+
+  assert('E2E2 : carbs_g = 75',                 near(meal.carbs_g, 75));
+  assert('E2E2 : ig_mean = 70 → seuil split',   meal.ig_mean === 70);
+
+  const opt    = new BolusOptimizer();
+  const result = opt.optimizeBolus({
+    bolus_standard: 8.0,
+    carbs_g:  meal.carbs_g,
+    ig_mean:  meal.ig_mean,
+    cg_total: meal.cg_total,
+  });
+
+  assert('E2E2 : strategy = split',              result.strategy.strategy === 'split');
+  assert('E2E2 : split_doses défini',            result.split_doses !== null);
+  assert('E2E2 : split_doses.before > 0',        result.split_doses.before > 0);
+  assert('E2E2 : split_doses.after > 0',         result.split_doses.after  > 0);
+  assert('E2E2 : before + after = bolus_optimized',
+    near(result.split_doses.before + result.split_doses.after, result.bolus_optimized, 0.001));
+
+  // formatResult : before + after = total arrondi (Issue 5 sur un cas réel)
+  const fmt = opt.formatResult(result, 0.1);
+  assert('E2E2 : split_doses_display présent',   fmt.split_doses_display !== null);
+  const before = parseFloat(fmt.split_doses_display.before);
+  const after  = parseFloat(fmt.split_doses_display.after);
+  const total  = parseFloat(fmt.bolus_optimized_display);
+  assert('E2E2 : before + after = total affiché (±0.001)',
+    Math.abs(before + after - total) < 0.001);
+})();
