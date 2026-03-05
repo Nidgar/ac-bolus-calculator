@@ -3482,5 +3482,256 @@
 <script src="simple-mode-wizard.js?v=3.0"></script>
 <script src="app.js?v=2.1"></script>
 
+
+<!-- ═══════════════════════════════════════════════════════════
+     🥚 Easter egg 1 — Long press 3s sur ⚙️ → page de tests
+     🥚 Easter egg 2 — Swipe gauche→droite header → index secret
+     ══════════════════════════════════════════════════════════ -->
+<style>
+  /* ── Barre de progression long press ── */
+  #easter-progress {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 3px; width: 0%;
+    background: linear-gradient(90deg, #6ee7ff, #34d399);
+    z-index: 99997;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(110,231,255,0.6);
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* ── Overlay index secret ── */
+  #secret-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11,18,32,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 99998;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  #secret-overlay.visible { opacity: 1; pointer-events: all; }
+  #secret-panel {
+    background: #0f1928;
+    border: 1px solid rgba(110,231,255,0.25);
+    border-radius: 20px;
+    padding: 28px 32px;
+    max-width: 360px; width: calc(100% - 48px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    transform: translateY(16px);
+    transition: transform 0.25s;
+  }
+  #secret-overlay.visible #secret-panel { transform: translateY(0); }
+  #secret-panel h2 {
+    font-size: 16px; font-weight: 900;
+    color: rgba(255,255,255,0.90);
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #secret-panel .secret-sub {
+    font-size: 12px; color: rgba(255,255,255,0.35);
+    margin-bottom: 22px; font-style: italic;
+  }
+  #secret-links { display: flex; flex-direction: column; gap: 10px; }
+  .secret-link {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    text-decoration: none;
+    color: rgba(255,255,255,0.80);
+    font-size: 13px; font-weight: 700;
+    transition: all 0.15s;
+  }
+  .secret-link:hover, .secret-link:active {
+    background: rgba(110,231,255,0.08);
+    border-color: rgba(110,231,255,0.30);
+    color: #6ee7ff;
+  }
+  .secret-link .sl-icon { font-size: 20px; flex-shrink: 0; }
+  .secret-link .sl-desc { font-size: 11px; color: rgba(255,255,255,0.35); font-weight: 500; display: block; margin-top: 2px; }
+  #secret-close {
+    margin-top: 20px; width: 100%; padding: 11px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: rgba(255,255,255,0.40);
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  #secret-close:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.70); }
+  /* Hint swipe */
+  #swipe-hint {
+    position: fixed; bottom: 0; left: 0;
+    height: 2px; width: 0%;
+    background: linear-gradient(90deg, #6ee7ff44, #6ee7ff);
+    z-index: 99996; pointer-events: none;
+  }
+</style>
+
+<!-- Index secret -->
+<div id="secret-overlay" role="dialog" aria-modal="true" aria-label="Index secret">
+  <div id="secret-panel">
+    <h2>🗂 Index secret</h2>
+    <div class="secret-sub">Tu as trouvé l'entrée cachée 🎉</div>
+    <div id="secret-links"></div>
+    <button id="secret-close">✕ Fermer</button>
+  </div>
+</div>
+<div id="swipe-hint"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ══════════════════════════════════════════════════════════
+  // 🥚 EASTER EGG 1 — Long press 3s sur ⚙️ → tests
+  // ══════════════════════════════════════════════════════════
+  const HOLD_MS  = 3000;
+  const TARGET   = 'tests/test-runner.html';
+
+  let holdTimer    = null;
+  let progressEl   = null;
+  let startTime    = null;
+  let rafId        = null;
+  let _wasLongPress = false;
+
+  // Crée la barre de progression si elle n'existe pas encore
+  function getOrCreateBar() {
+    let el = document.getElementById('easter-progress');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'easter-progress';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function animateProgress() {
+    const bar = document.getElementById('easter-progress');
+    if (!bar || !startTime) return;
+    const pct = Math.min(100, ((Date.now() - startTime) / HOLD_MS) * 100);
+    bar.style.width = pct + '%';
+    if (pct < 100) rafId = requestAnimationFrame(animateProgress);
+  }
+
+  function startHold() {
+    startTime  = Date.now();
+    progressEl = getOrCreateBar();
+    progressEl.style.background = 'linear-gradient(90deg, #6ee7ff, #34d399)';
+    progressEl.style.width = '0%';
+    rafId = requestAnimationFrame(animateProgress);
+    holdTimer = setTimeout(() => {
+      _wasLongPress = true;
+      cancelAnimationFrame(rafId);
+      const bar = document.getElementById('easter-progress');
+      if (bar) {
+        bar.style.width = '100%';
+        bar.style.background = '#34d399';
+        setTimeout(() => { bar.remove(); window.location.href = TARGET; }, 300);
+      } else {
+        window.location.href = TARGET;
+      }
+    }, HOLD_MS);
+  }
+
+  function cancelHold() {
+    clearTimeout(holdTimer); holdTimer = null;
+    cancelAnimationFrame(rafId); rafId = null;
+    startTime = null;
+    const bar = document.getElementById('easter-progress');
+    if (bar) { bar.style.width = '0%'; setTimeout(() => bar.remove(), 150); }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('settingsBtn');
+    if (!btn) return;
+
+    // Souris
+    btn.addEventListener('mousedown',   startHold);
+    btn.addEventListener('mouseup',     cancelHold);
+    btn.addEventListener('mouseleave',  cancelHold);
+    // Touch
+    btn.addEventListener('touchstart',  startHold,  { passive: true });
+    btn.addEventListener('touchend',    cancelHold);
+    btn.addEventListener('touchcancel', cancelHold);
+    // Menu contextuel mobile — bloquer
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+    // Bloquer l'ouverture des settings si c'était un long press
+    btn.addEventListener('click', e => {
+      if (_wasLongPress) { e.stopImmediatePropagation(); _wasLongPress = false; }
+    }, true);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // 🥚 EASTER EGG 2 — Swipe gauche→droite header → index secret
+  // ══════════════════════════════════════════════════════════
+  const SECRET_PAGES = [
+    { icon: '🚫', label: 'Erreur 403',        desc: 'Page accès interdit',      href: '403.html' },
+    { icon: '🔍', label: 'Erreur 404',        desc: 'Page introuvable',         href: '404.html' },
+  ];
+
+  const SWIPE_MIN_PX   = 80;
+  const SWIPE_MAX_MS   = 600;
+  const SWIPE_MAX_VERT = 60;
+
+  const overlay  = document.getElementById('secret-overlay');
+  const linksEl  = document.getElementById('secret-links');
+  const closeBtn = document.getElementById('secret-close');
+  const hintEl   = document.getElementById('swipe-hint');
+
+  // Construire les liens
+  SECRET_PAGES.forEach(p => {
+    const a = document.createElement('a');
+    a.className = 'secret-link';
+    a.href = p.href;
+    a.innerHTML = `<span class="sl-icon">${p.icon}</span>
+      <span><span>${p.label}</span><span class="sl-desc">${p.desc}</span></span>`;
+    linksEl.appendChild(a);
+  });
+
+  const openOverlay  = () => overlay.classList.add('visible');
+  const closeOverlay = () => overlay.classList.remove('visible');
+  closeBtn.addEventListener('click', closeOverlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlay(); });
+
+  // Détection swipe
+  let swipeStart = null;
+
+  const onSwipeStart = (x, y) => { swipeStart = { x, y, t: Date.now() }; };
+  const onSwipeMove  = (x) => {
+    if (!swipeStart) return;
+    const dx = x - swipeStart.x;
+    if (dx > 0 && hintEl) hintEl.style.width = Math.min(100, (dx / SWIPE_MIN_PX) * 60) + '%';
+  };
+  const onSwipeEnd   = (x, y) => {
+    if (hintEl) hintEl.style.width = '0%';
+    if (!swipeStart) return;
+    const dx = x - swipeStart.x;
+    const dy = Math.abs(y - swipeStart.y);
+    const dt = Date.now() - swipeStart.t;
+    swipeStart = null;
+    if (dx >= SWIPE_MIN_PX && dy <= SWIPE_MAX_VERT && dt <= SWIPE_MAX_MS) openOverlay();
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const header = document.querySelector('header');
+    if (!header) return;
+    // Touch
+    header.addEventListener('touchstart', e => { const t = e.touches[0]; onSwipeStart(t.clientX, t.clientY); }, { passive: true });
+    header.addEventListener('touchmove',  e => { const t = e.touches[0]; onSwipeMove(t.clientX); },            { passive: true });
+    header.addEventListener('touchend',   e => { const t = e.changedTouches[0]; onSwipeEnd(t.clientX, t.clientY); });
+    // Souris
+    header.addEventListener('mousedown', e => onSwipeStart(e.clientX, e.clientY));
+    window.addEventListener('mousemove', e => { if (e.buttons === 1) onSwipeMove(e.clientX); });
+    window.addEventListener('mouseup',   e => onSwipeEnd(e.clientX, e.clientY));
+  });
+
+})();
+</script>
+
 </body>
 </html>
