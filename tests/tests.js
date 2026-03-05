@@ -265,11 +265,11 @@ suite('FoodDatabase — DB1 : calculateMeal → contrat MealMetrics');
   db.loaded = true;
 
   // 50g de pain + 150g de pomme
-  // Pain  : carbs = 55*50/100  = 27.5g, cg = 38.5*50/100  = 19.25
-  // Pomme : carbs = 14*150/100 = 21g,   cg = 5.3*150/100  = 7.95
+  // Pain  : carbs = 55*50/100  = 27.5g, cg = 55*70/100 * 50/100  = 19.25
+  // Pomme : carbs = 14*150/100 = 21g,   cg = 14*38/100 * 150/100 = 7.98
   // carbs_g  = 48.5 (brut, pas d'arrondi interne)
   // ig_mean  = round((70*27.5 + 38*21) / 48.5) = round(56.14) = 56
-  // cg_total = 27.2 brut
+  // cg_total = 27.23 brut (calculateMeal recalcule CG depuis glucides×ig, champ cg ignoré — cf. Issue P0)
   const meal = db.calculateMeal([
     { aliment_id: 'pain',  quantite_g: 50  },
     { aliment_id: 'pomme', quantite_g: 150 },
@@ -279,7 +279,7 @@ suite('FoodDatabase — DB1 : calculateMeal → contrat MealMetrics');
   assert('DB1 : contrat MealMetrics valide',       MealMetrics.isValid(meal));
   assert('DB1 : carbs_g brut ≈ 48.5',              near(meal.carbs_g, 48.5));
   assert('DB1 : ig_mean = 56',                     meal.ig_mean === 56);
-  assert('DB1 : cg_total brut ≈ 27.2',             near(meal.cg_total, 27.2, 0.01));
+  assert('DB1 : cg_total brut ≈ 27.2',             near(meal.cg_total, 27.23, 0.01));
 
   // MealMetrics.format() — arrondis UI
   const fmt = MealMetrics.format(meal);
