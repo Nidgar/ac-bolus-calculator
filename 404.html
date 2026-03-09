@@ -58,6 +58,55 @@
       margin-bottom: 10px;
     }
 
+    /* ── Carte résultat (overlay rectangle arrondi sur la roue) ── */
+    #resultOverlay {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(100% + 32px);
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(11,18,32,.94), rgba(11,18,32,.89));
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1.5px solid rgba(255,255,255,.13);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 24px 22px 20px;
+      text-align: center;
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    #resultOverlay.visible {
+      visibility: visible;
+      opacity: 1;
+      animation: pop-overlay .35s cubic-bezier(.34,1.56,.64,1) forwards;
+    }
+    #overlayClose {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(255,255,255,.08);
+      border: none;
+      color: rgba(255,255,255,.5);
+      font-size: 14px;
+      line-height: 1;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
+    #overlayClose:hover { background: rgba(255,255,255,.18); color: rgba(255,255,255,.9); }
+
     .pointer {
       position: absolute;
       top: -8px;
@@ -114,29 +163,18 @@
       box-shadow: 0 8px 36px rgba(110,231,255,.55);
     }
 
-    /* ── Carte résultat ── */
-    #resultCard {
-      display: none;
-      background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-      border-radius: 20px;
-      padding: 22px 28px;
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-      margin-bottom: 24px;
-      animation: pop .4s cubic-bezier(.34,1.56,.64,1);
-    }
+    /* ── Styles résultat (dans overlay) ── */
 
-    .res-emoji { font-size: 56px; margin-bottom: 10px; }
-    .res-label { font-size: 22px; font-weight: 900; margin-bottom: 10px; }
-    .res-info  { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,.82); margin-bottom: 14px; }
+    .res-emoji { font-size: 52px; margin-bottom: 6px; }
+    .res-label { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+    .res-info  { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.85); margin-bottom: 12px; }
 
     .res-badge {
       display: inline-flex;
       gap: 12px;
       align-items: center;
       border-radius: 12px;
-      padding: 9px 20px;
+      padding: 8px 18px;
       font-size: 13px;
     }
 
@@ -187,6 +225,11 @@
       to   { opacity: 1; transform: scale(1)   translateY(0);    }
     }
 
+    @keyframes pop-overlay {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(.88); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1);   }
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
@@ -217,24 +260,24 @@
   <div class="wheel-wrap">
     <div class="pointer"></div>
     <svg id="wheelDisc" width="300" height="300" viewBox="0 0 300 300" aria-label="Roue des aliments et leur indice glycémique"></svg>
+    <!-- Overlay résultat centré sur la roue -->
+    <div id="resultOverlay" role="status" aria-live="polite">
+      <button id="overlayClose" aria-label="Fermer">✕</button>
+      <div class="res-emoji" id="resEmoji"></div>
+      <div class="res-label" id="resLabel"></div>
+      <p class="res-info" id="resInfo"></p>
+      <div class="res-badge" id="resBadge">
+        <span class="ig-muted">IG</span>
+        <span class="ig-num" id="resIgNum"></span>
+        <span id="resIgBadge"></span>
+      </div>
+    </div>
   </div>
 
   <div class="spin-counter" id="spinCounter"></div>
 
   <!-- Bouton -->
   <button id="spinBtn" type="button">🎯 Faire tourner la roue !</button>
-
-  <!-- Résultat -->
-  <div id="resultCard" role="status" aria-live="polite">
-    <div class="res-emoji" id="resEmoji"></div>
-    <div class="res-label" id="resLabel"></div>
-    <p class="res-info" id="resInfo"></p>
-    <div class="res-badge" id="resBadge">
-      <span class="ig-muted">IG</span>
-      <span class="ig-num" id="resIgNum"></span>
-      <span id="resIgBadge"></span>
-    </div>
-  </div>
 
   <!-- Légende -->
   <div class="legend">
@@ -332,8 +375,9 @@
 
     const disc      = document.getElementById('wheelDisc');
     const btn       = document.getElementById('spinBtn');
-    const card      = document.getElementById('resultCard');
+    const card      = document.getElementById('resultOverlay');
     const counter   = document.getElementById('spinCounter');
+    const closeBtn  = document.getElementById('overlayClose');
 
     function igLabel(ig) {
       if (ig === 0)  return '⚪ Nul';
@@ -357,17 +401,15 @@
       document.getElementById('resLabel').style.color      = seg.color;
       document.getElementById('resIgNum').style.color      = seg.color;
 
-      card.style.display = 'block';
-      // Re-déclencher l'animation
-      card.style.animation = 'none';
-      card.offsetHeight; // reflow
-      card.style.animation = 'pop .4s cubic-bezier(.34,1.56,.64,1)';
+      card.classList.remove('visible');
+      card.offsetHeight; // reflow pour reset l'animation
+      card.classList.add('visible');
     }
 
     function doSpin() {
       if (spinning) return;
       spinning = true;
-      card.style.display = 'none';
+      card.classList.remove('visible');
       btn.disabled = true;
       btn.textContent = '⏳ La roue tourne…';
 
@@ -378,9 +420,9 @@
       disc.style.transform = `rotate(${newRot}deg)`;
 
       setTimeout(() => {
-        // Calcul du segment pointé (pointeur en haut = 270° sur le disque)
+        // Calcul du segment pointé (pointeur en haut = 0° / 12h)
         const norm    = ((newRot % 360) + 360) % 360;
-        const pointed = (360 - norm + 270) % 360;
+        const pointed = (360 - norm + 360) % 360;
         const idx     = Math.floor(pointed / SA) % N;
 
         currentRot = newRot;
@@ -401,6 +443,7 @@
     // ════════════════════════════════════════
     buildWheel();
     btn.addEventListener('click', doSpin);
+    closeBtn.addEventListener('click', () => card.classList.remove('visible'));
 
     // Easter egg console 😄
     console.log('🎡 AC Bolus — Page 404 chargée ! Tu as tourné la roue', spinCount, 'fois.');
