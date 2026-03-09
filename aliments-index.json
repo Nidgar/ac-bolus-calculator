@@ -1,7 +1,7 @@
 {
-  "version": "3.4",
-  "date": "2026-03-04",
-  "description": "Base de données unifiée — 344 aliments, 12 catégories.",
+  "version": "3.5",
+  "date": "2026-03-09",
+  "description": "Base de données unifiée — 395 aliments, 12 catégories.",
   "schema": {
     "glucides": "g POUR 100g ou 100ml — TOUJOURS /100g, jamais par portion. Calculs : (glucides × quantite_g) / 100",
     "ig": "Index Glycémique. null = non applicable (viandes, poissons, graisses). Calculs : ig ?? 0",
@@ -1155,6 +1155,119 @@
             "description": "1 assiette"
           },
           "portion_label": "1 assiette (250g)"
+        },
+        {
+          "id": "riz_haricots_rouges",
+          "nom": "Riz aux haricots rouges",
+          "emoji": "🍚",
+          "synonymes": [
+            "riz haricots rouges",
+            "pois rouges riz",
+            "rice and beans",
+            "riz pois rouges"
+          ],
+          "glucides": 28,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (250g)"
+        },
+        {
+          "id": "riz_creole",
+          "nom": "Riz créole",
+          "emoji": "🍚",
+          "synonymes": [
+            "riz créole",
+            "riz antillais",
+            "riz grains séparés"
+          ],
+          "glucides": 28,
+          "ig": 64,
+          "portion_usuelle": {
+            "quantite": 180,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (180g)"
+        },
+        {
+          "id": "igname_bouillie",
+          "nom": "Igname bouillie",
+          "emoji": "🥔",
+          "synonymes": [
+            "igname",
+            "yam",
+            "igname bouillie",
+            "igname cuite"
+          ],
+          "glucides": 28,
+          "ig": 51,
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (200g)"
+        },
+        {
+          "id": "banane_plantain",
+          "nom": "Banane plantain bouillie",
+          "emoji": "🍌",
+          "synonymes": [
+            "banane plantain",
+            "plantain",
+            "banane à cuire",
+            "figue banane"
+          ],
+          "glucides": 32,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "manioc_bouilli",
+          "nom": "Manioc bouilli",
+          "emoji": "🥔",
+          "synonymes": [
+            "manioc",
+            "cassava",
+            "yuca",
+            "manioc cuit"
+          ],
+          "glucides": 38,
+          "ig": 46,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "taro_bouilli",
+          "nom": "Taro bouilli",
+          "emoji": "🥔",
+          "synonymes": [
+            "taro",
+            "taro cuit",
+            "colocase",
+            "songe"
+          ],
+          "glucides": 26,
+          "ig": 54,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
         }
       ]
     },
@@ -1388,6 +1501,62 @@
             "description": "1 portion"
           },
           "portion_label": "1 portion (50g)"
+        },
+        {
+          "id": "pois_angole",
+          "nom": "Pois d'Angole",
+          "emoji": "🫘",
+          "synonymes": [
+            "pois d'angole",
+            "pois congo",
+            "pigeon peas",
+            "gandules"
+          ],
+          "glucides": 22,
+          "ig": 22,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "haricots_yeux_noirs",
+          "nom": "Haricots yeux noirs",
+          "emoji": "🫘",
+          "synonymes": [
+            "black-eyed peas",
+            "niébé",
+            "haricots cornille",
+            "cowpeas"
+          ],
+          "glucides": 24,
+          "ig": 30,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "lentilles_puy",
+          "nom": "Lentilles du Puy",
+          "emoji": "🫘",
+          "synonymes": [
+            "lentilles du Puy",
+            "lentilles vertes du Puy",
+            "lentilles AOP"
+          ],
+          "glucides": 16,
+          "ig": 22,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
         }
       ]
     },
@@ -1762,6 +1931,98 @@
             "description": "2 fruits"
           },
           "portion_label": "2 fruits (50g)"
+        },
+        {
+          "id": "goyave",
+          "nom": "Goyave",
+          "emoji": "🍈",
+          "synonymes": [
+            "goyave",
+            "guava",
+            "goyavier"
+          ],
+          "glucides": 8,
+          "ig": 31,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 goyave"
+          },
+          "portion_label": "1 goyave (100g)"
+        },
+        {
+          "id": "corossol",
+          "nom": "Corossol",
+          "emoji": "🍈",
+          "synonymes": [
+            "corossol",
+            "soursop",
+            "graviola",
+            "anone"
+          ],
+          "glucides": 16,
+          "ig": 42,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "carambole",
+          "nom": "Carambole",
+          "emoji": "⭐",
+          "synonymes": [
+            "carambole",
+            "star fruit",
+            "starfruit"
+          ],
+          "glucides": 7,
+          "ig": 25,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 carambole"
+          },
+          "portion_label": "1 carambole (100g)"
+        },
+        {
+          "id": "sapotille",
+          "nom": "Sapotille",
+          "emoji": "🟤",
+          "synonymes": [
+            "sapotille",
+            "sapodilla",
+            "chikoo"
+          ],
+          "glucides": 20,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 sapotille"
+          },
+          "portion_label": "1 sapotille (100g)"
+        },
+        {
+          "id": "jacquier",
+          "nom": "Fruit du jacquier",
+          "emoji": "🟡",
+          "synonymes": [
+            "jacquier",
+            "jackfruit",
+            "fruit à pain géant",
+            "nangka"
+          ],
+          "glucides": 24,
+          "ig": 50,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (100g)"
         }
       ]
     },
@@ -2244,6 +2505,154 @@
             "chou fleur grillé"
           ],
           "glucides": 5,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "poireaux",
+          "nom": "Poireaux",
+          "emoji": "🌿",
+          "synonymes": [
+            "poireau",
+            "poireaux",
+            "leek"
+          ],
+          "glucides": 3,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "christophine",
+          "nom": "Christophine",
+          "emoji": "🥬",
+          "synonymes": [
+            "chayote",
+            "chayotte",
+            "chouchou",
+            "mirliton"
+          ],
+          "glucides": 4,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "giraumon",
+          "nom": "Giraumon",
+          "emoji": "🎃",
+          "synonymes": [
+            "giraumon",
+            "potiron antillais",
+            "calabaza"
+          ],
+          "glucides": 7,
+          "ig": 75,
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (200g)"
+        },
+        {
+          "id": "gombo",
+          "nom": "Gombo",
+          "emoji": "🌿",
+          "synonymes": [
+            "gombo",
+            "okra",
+            "gumbo",
+            "lady finger"
+          ],
+          "glucides": 4,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (100g)"
+        },
+        {
+          "id": "patisson",
+          "nom": "Pâtisson",
+          "emoji": "🥗",
+          "synonymes": [
+            "pâtisson",
+            "patisson",
+            "squash"
+          ],
+          "glucides": 4,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "malanga",
+          "nom": "Malanga / Madère",
+          "emoji": "🥔",
+          "synonymes": [
+            "malanga",
+            "madère",
+            "taro antillais",
+            "yautia"
+          ],
+          "glucides": 28,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "aubergine_africaine",
+          "nom": "Aubergine africaine",
+          "emoji": "🍆",
+          "synonymes": [
+            "aubergine africaine",
+            "garden egg",
+            "aubergine ronde"
+          ],
+          "glucides": 4,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 150,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (150g)"
+        },
+        {
+          "id": "bredes_epinards",
+          "nom": "Brèdes épinards",
+          "emoji": "🥬",
+          "synonymes": [
+            "brèdes",
+            "bredes",
+            "épinards réunionnais",
+            "chou brède"
+          ],
+          "glucides": 3,
           "ig": 15,
           "portion_usuelle": {
             "quantite": 150,
@@ -3558,6 +3967,43 @@
             "description": "1 pot"
           },
           "portion_label": "1 pot (125g)"
+        },
+        {
+          "id": "lassi_mangue",
+          "nom": "Lassi mangue",
+          "emoji": "🥭",
+          "synonymes": [
+            "lassi mangue",
+            "mango lassi",
+            "boisson yaourt mangue"
+          ],
+          "glucides": 22,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "ml",
+            "description": "1 verre"
+          },
+          "portion_label": "1 verre (250ml)"
+        },
+        {
+          "id": "ayran",
+          "nom": "Ayran",
+          "emoji": "🥛",
+          "synonymes": [
+            "ayran",
+            "yaourt turc à boire",
+            "doogh",
+            "laban"
+          ],
+          "glucides": 5,
+          "ig": 30,
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "ml",
+            "description": "1 verre"
+          },
+          "portion_label": "1 verre (250ml)"
         }
       ]
     },
@@ -4457,6 +4903,82 @@
             "description": "1 financier"
           },
           "portion_label": "1 financier (40g)"
+        },
+        {
+          "id": "mochi",
+          "nom": "Mochi",
+          "emoji": "🍡",
+          "synonymes": [
+            "mochi",
+            "mochi japonais",
+            "gâteau riz gluant",
+            "daifuku"
+          ],
+          "glucides": 36,
+          "ig": 62,
+          "portion_usuelle": {
+            "quantite": 45,
+            "unite": "g",
+            "description": "1 mochi"
+          },
+          "portion_label": "1 mochi (45g)"
+        },
+        {
+          "id": "tourment_amour",
+          "nom": "Tourment d'amour",
+          "emoji": "🍰",
+          "synonymes": [
+            "tourment d'amour",
+            "tourment amour",
+            "gâteau guadeloupe",
+            "gâteau coco vanille"
+          ],
+          "glucides": 52,
+          "ig": 65,
+          "portion_usuelle": {
+            "quantite": 80,
+            "unite": "g",
+            "description": "1 part"
+          },
+          "portion_label": "1 part (80g)"
+        },
+        {
+          "id": "bonbon_coco",
+          "nom": "Bonbon coco",
+          "emoji": "🥥",
+          "synonymes": [
+            "bonbon coco",
+            "sucre coco",
+            "coco sucré",
+            "coconut candy"
+          ],
+          "glucides": 68,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "2-3 bonbons"
+          },
+          "portion_label": "2-3 bonbons (30g)"
+        },
+        {
+          "id": "pasteis_nata",
+          "nom": "Pastéis de nata",
+          "emoji": "🥧",
+          "synonymes": [
+            "pasteis de nata",
+            "pastel de nata",
+            "flan portugais",
+            "tarte custard"
+          ],
+          "glucides": 30,
+          "ig": 65,
+          "portion_usuelle": {
+            "quantite": 80,
+            "unite": "g",
+            "description": "1 pièce"
+          },
+          "portion_label": "1 pièce (80g)"
         }
       ]
     },
@@ -5384,6 +5906,279 @@
             "description": "1 portion"
           },
           "portion_label": "1 portion (200g)"
+        },
+        {
+          "id": "rougail_saucisse",
+          "nom": "Rougail saucisse",
+          "emoji": "🌶️",
+          "synonymes": [
+            "rougail saucisse",
+            "rougail",
+            "rougail saucisses réunion"
+          ],
+          "glucides": 12,
+          "ig": 45,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "colombo_poulet",
+          "nom": "Colombo de poulet",
+          "emoji": "🍛",
+          "synonymes": [
+            "colombo poulet",
+            "colombo",
+            "colombo antillais"
+          ],
+          "glucides": 15,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "boudin_antillais",
+          "nom": "Boudin antillais",
+          "emoji": "🌶️",
+          "synonymes": [
+            "boudin antillais",
+            "boudin créole",
+            "boudin piment"
+          ],
+          "glucides": 8,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 120,
+            "unite": "g",
+            "description": "2 boudins"
+          },
+          "portion_label": "2 boudins (120g)"
+        },
+        {
+          "id": "cari_poulet",
+          "nom": "Cari poulet réunionnais",
+          "emoji": "🍛",
+          "synonymes": [
+            "cari poulet",
+            "carry poulet",
+            "cari réunion"
+          ],
+          "glucides": 10,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "mafe_poulet",
+          "nom": "Mafé poulet",
+          "emoji": "🥜",
+          "synonymes": [
+            "mafé",
+            "mafe",
+            "ragoût arachide",
+            "groundnut stew"
+          ],
+          "glucides": 18,
+          "ig": 45,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "yassa_poulet",
+          "nom": "Yassa poulet",
+          "emoji": "🍋",
+          "synonymes": [
+            "yassa",
+            "yassa poulet",
+            "poulet yassa sénégal"
+          ],
+          "glucides": 12,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "thiebu_dienne",
+          "nom": "Thiéboudienne",
+          "emoji": "🐟",
+          "synonymes": [
+            "thiéboudienne",
+            "thieb",
+            "riz poisson sénégalais",
+            "ceebu jën"
+          ],
+          "glucides": 38,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 350,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (350g)"
+        },
+        {
+          "id": "tagine_agneau",
+          "nom": "Tagine agneau pruneaux",
+          "emoji": "🫕",
+          "synonymes": [
+            "tagine agneau",
+            "tajine agneau",
+            "tajine pruneaux"
+          ],
+          "glucides": 22,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (300g)"
+        },
+        {
+          "id": "couscous_royal",
+          "nom": "Couscous royal",
+          "emoji": "🫕",
+          "synonymes": [
+            "couscous royal",
+            "couscous merguez",
+            "couscous complet"
+          ],
+          "glucides": 48,
+          "ig": 55,
+          "portion_usuelle": {
+            "quantite": 400,
+            "unite": "g",
+            "description": "1 assiette"
+          },
+          "portion_label": "1 assiette (400g)"
+        },
+        {
+          "id": "pastilla_poulet",
+          "nom": "Pastilla poulet",
+          "emoji": "🥧",
+          "synonymes": [
+            "pastilla",
+            "pastilla poulet",
+            "bastilla",
+            "briouate"
+          ],
+          "glucides": 35,
+          "ig": 50,
+          "portion_usuelle": {
+            "quantite": 200,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (200g)"
+        },
+        {
+          "id": "gratin_christophine",
+          "nom": "Gratin de christophine",
+          "emoji": "🥬",
+          "synonymes": [
+            "gratin christophine",
+            "chayote gratin"
+          ],
+          "glucides": 10,
+          "ig": 40,
+          "portion_usuelle": {
+            "quantite": 250,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (250g)"
+        },
+        {
+          "id": "soupe_poireaux",
+          "nom": "Soupe poireaux pomme de terre",
+          "emoji": "🥣",
+          "synonymes": [
+            "soupe poireaux",
+            "soupe poireaux pdT",
+            "vichyssoise chaude",
+            "potage parmentier"
+          ],
+          "glucides": 12,
+          "ig": 35,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "ml",
+            "description": "1 bol"
+          },
+          "portion_label": "1 bol (300ml)"
+        },
+        {
+          "id": "veloute_butternut",
+          "nom": "Velouté butternut",
+          "emoji": "🥣",
+          "synonymes": [
+            "velouté butternut",
+            "soupe butternut",
+            "crème butternut"
+          ],
+          "glucides": 10,
+          "ig": 65,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "ml",
+            "description": "1 bol"
+          },
+          "portion_label": "1 bol (300ml)"
+        },
+        {
+          "id": "soupe_lentilles_corail",
+          "nom": "Soupe lentilles corail",
+          "emoji": "🥣",
+          "synonymes": [
+            "soupe lentilles",
+            "potage lentilles corail",
+            "dal soupe"
+          ],
+          "glucides": 18,
+          "ig": 30,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "ml",
+            "description": "1 bol"
+          },
+          "portion_label": "1 bol (300ml)"
+        },
+        {
+          "id": "soupe_potiron_coco",
+          "nom": "Soupe potiron coco",
+          "emoji": "🥣",
+          "synonymes": [
+            "soupe potiron",
+            "velouté potiron",
+            "soupe courge coco"
+          ],
+          "glucides": 14,
+          "ig": 60,
+          "portion_usuelle": {
+            "quantite": 300,
+            "unite": "ml",
+            "description": "1 bol"
+          },
+          "portion_label": "1 bol (300ml)"
         }
       ]
     },
@@ -5699,6 +6494,153 @@
             "description": "1 portion"
           },
           "portion_label": "1 portion (50ml)"
+        },
+        {
+          "id": "sauce_tomate_maison",
+          "nom": "Sauce tomate maison",
+          "emoji": "🍅",
+          "synonymes": [
+            "sauce tomate maison",
+            "coulis tomate",
+            "tomate cuisinée",
+            "sauce napolitaine"
+          ],
+          "glucides": 8,
+          "ig": 35,
+          "portion_usuelle": {
+            "quantite": 100,
+            "unite": "ml",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (100ml)"
+        },
+        {
+          "id": "rougail_tomate",
+          "nom": "Rougail tomate",
+          "emoji": "🌶️",
+          "synonymes": [
+            "rougail tomate",
+            "rougail crudités",
+            "achards tomate"
+          ],
+          "glucides": 5,
+          "ig": 30,
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 c. à soupe"
+          },
+          "portion_label": "1 c. à soupe (50g)"
+        },
+        {
+          "id": "rougail_mangue",
+          "nom": "Rougail mangue",
+          "emoji": "🥭",
+          "synonymes": [
+            "rougail mangue",
+            "achards mangue",
+            "chutney mangue épicé"
+          ],
+          "glucides": 12,
+          "ig": 45,
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 c. à soupe"
+          },
+          "portion_label": "1 c. à soupe (50g)"
+        },
+        {
+          "id": "sauce_chien",
+          "nom": "Sauce chien",
+          "emoji": "🌿",
+          "synonymes": [
+            "sauce chien",
+            "sauce antillaise",
+            "vinaigrette créole"
+          ],
+          "glucides": 3,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "ml",
+            "description": "1 c. à soupe"
+          },
+          "portion_label": "1 c. à soupe (30ml)"
+        },
+        {
+          "id": "chutney_mangue",
+          "nom": "Chutney mangue",
+          "emoji": "🥭",
+          "synonymes": [
+            "chutney",
+            "chutney mangue",
+            "mango chutney"
+          ],
+          "glucides": 28,
+          "ig": 50,
+          "portion_usuelle": {
+            "quantite": 30,
+            "unite": "g",
+            "description": "1 c. à soupe"
+          },
+          "portion_label": "1 c. à soupe (30g)"
+        },
+        {
+          "id": "achard_legumes",
+          "nom": "Achard de légumes",
+          "emoji": "🥗",
+          "synonymes": [
+            "achard",
+            "achards légumes",
+            "achards réunion"
+          ],
+          "glucides": 4,
+          "ig": 15,
+          "portion_usuelle": {
+            "quantite": 50,
+            "unite": "g",
+            "description": "1 portion"
+          },
+          "portion_label": "1 portion (50g)"
+        },
+        {
+          "id": "sambal_oelek",
+          "nom": "Sambal oelek",
+          "emoji": "🌶️",
+          "synonymes": [
+            "sambal",
+            "sambal oelek",
+            "pâte piment",
+            "chili paste"
+          ],
+          "glucides": 3,
+          "ig": 20,
+          "portion_usuelle": {
+            "quantite": 15,
+            "unite": "g",
+            "description": "1 c. à café"
+          },
+          "portion_label": "1 c. à café (15g)"
+        },
+        {
+          "id": "colombo_pate",
+          "nom": "Pâte colombo",
+          "emoji": "🫙",
+          "synonymes": [
+            "colombo",
+            "pâte colombo",
+            "épices colombo",
+            "curry antillais"
+          ],
+          "glucides": 5,
+          "ig": 20,
+          "portion_usuelle": {
+            "quantite": 10,
+            "unite": "g",
+            "description": "1 c. à café"
+          },
+          "portion_label": "1 c. à café (10g)"
         }
       ]
     },

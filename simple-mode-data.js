@@ -1,5 +1,5 @@
 /**
- * SIMPLE MODE DATA v3.7 — Source unique : aliments-index.json
+ * SIMPLE MODE DATA v3.8 — Source unique : aliments-index.json
  * ════════════════════════════════════════════════════════════
  *
  * MIGRATION v3.6 (2026-03-01) :
@@ -383,7 +383,8 @@ const SimpleModeDataBuilder = {
     SimpleModeData.boissons_petit_dej = p('boissons', [
       'eau', 'eau_gazeuse', 'lait_boisson', 'chocolat_chaud', 'chocolat_froid',
       'jus_orange', 'jus_pomme', 'jus_ananas', 'jus_mangue', 'smoothie_fruits',
-      'lait_amande', 'lait_avoine', 'lait_coco', 'cafe', 'the', 'the_vert', 'infusion_fruits'
+      'lait_amande', 'lait_avoine', 'lait_coco', 'cafe', 'the', 'the_vert', 'infusion_fruits',
+      'lassi_mangue', 'ayran'
     ]);
 
     // Laits végétaux et fermentés — boissons alternatives petit-déj / goûter
@@ -398,7 +399,8 @@ const SimpleModeDataBuilder = {
       'eau', 'eau_gazeuse', 'sirop_fruit', 'sirop_grenadine', 'coca_cola', 'the_glace', 'limonade',
       'jus_orange', 'jus_pomme', 'jus_raisin', 'jus_tomate',
       'jus_cranberry', 'jus_ananas', 'jus_mangue',
-      'lait_amande', 'lait_avoine', 'kombucha', 'boisson_sportive', 'the_vert'
+      'lait_amande', 'lait_avoine', 'kombucha', 'boisson_sportive', 'the_vert',
+      'lassi_mangue', 'ayran'
     ]);
 
     SimpleModeData.boissons_gouter = p('boissons', [
@@ -474,6 +476,9 @@ const SimpleModeDataBuilder = {
       'fromage_pate_dure', 'camembert', 'chevre', 'fromage_fondu', 'fromage_fondu_individuel', 'fromage_tartiner', 'creme_fraiche'
     ]);
 
+    // Boissons lactées exotiques
+    SimpleModeData.boissons_lactees = p('produits_laitiers', ['lassi_mangue', 'ayran', 'lait_ribot', 'yaourt_a_boire', 'kefir']);
+
     // ── DESSERTS ──────────────────────────────────────────────────────────
     // Tous les fruits frais disponibles en BDD (17 fruits, sans fruits_secs)
     const tousLesFruitsFrais = [
@@ -481,6 +486,7 @@ const SimpleModeDataBuilder = {
       'fraise', 'framboise', 'raisin', 'kiwi', 'peche',
       'melon', 'pasteque', 'abricot', 'cerise', 'ananas', 'mangue', 'myrtille',
       'litchi', 'grenade', 'papaye', 'kaki', 'fruit_passion',
+      'goyave', 'corossol', 'carambole', 'sapotille', 'jacquier',
     ];
 
     SimpleModeData.desserts_fruits = p('fruits', [...tousLesFruitsFrais, 'fruits_secs']);
@@ -503,7 +509,8 @@ const SimpleModeDataBuilder = {
       'brownie', 'muffin', 'tiramisu', 'crumble', 'pain_perdu',
       'chocolat_noir', 'chocolat_lait', 'bonbon', 'sucre_blanc',
       'confiture', 'miel',
-      'esquimau_chocolat', 'sorbet_citron', 'gaufre', 'palmier', 'financier'
+      'esquimau_chocolat', 'sorbet_citron', 'gaufre', 'palmier', 'financier',
+      'mochi', 'tourment_amour', 'bonbon_coco', 'pasteis_nata'
     ]);
 
     // Pâtisseries françaises (nouvelle section v3.6)
@@ -513,14 +520,21 @@ const SimpleModeDataBuilder = {
       'paris_brest', 'religieuse', 'saint_honore', 'baba_rhum',
       'fraisier', 'opera', 'charlotte_fraises',
       'fondant_chocolat', 'clafoutis', 'far_breton', 'biscuit_roule',
-      'macaron', 'sable_breton', 'nougat', 'calisson', 'touron'
+      'macaron', 'sable_breton', 'nougat', 'calisson', 'touron',
+      'mochi', 'pasteis_nata', 'tourment_amour', 'bonbon_coco'
     ]);
 
     // ── SAUCES & CONDIMENTS ──────────────────────────────────────────────────
     SimpleModeData.sauces_condiments = p('sauces_condiments', null);  // tous
 
     // ── PLATS PRÉPARÉS (nouvelle section v3.6) ───────────────────────────────
-    SimpleModeData.plats_chauds = p('plats_prepares', null);  // tous
+    SimpleModeData.plats_chauds = p('plats_prepares', null);  // tous — inclut rougail, colombo, cari, soupes...
+
+    // Soupes & potages (sous-ensemble de plats_prepares pour affichage dédié)
+    SimpleModeData.soupes = p('plats_prepares', [
+      'soupe_legumes', 'soupe_oignon', 'soupe_poireaux',
+      'veloute_butternut', 'soupe_lentilles_corail', 'soupe_potiron_coco'
+    ]);
 
     // ── GOÛTER ────────────────────────────────────────────────────────────
     SimpleModeData.gouter_contenu = [
