@@ -715,6 +715,196 @@
       border-color: rgba(99,102,241,0.35);
       background: rgba(99,102,241,0.08);
     }
+    /* Sources de données — bandeau footer */
+    .footerSources{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 7px;
+      padding: 8px 0 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .footerSourcesBadge{
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid;
+      transition: opacity 0.15s;
+      text-decoration: none;
+    }
+    .footerSourcesBadge:hover{ opacity: 0.75; }
+    .footerSourcesBadge--blue{
+      background: rgba(56,189,248,0.12);
+      border-color: rgba(56,189,248,0.35);
+      color: #7dd3fc;
+    }
+    .footerSourcesBadge--green{
+      background: rgba(52,211,153,0.12);
+      border-color: rgba(52,211,153,0.35);
+      color: #6ee7b7;
+    }
+    :root[data-theme="clair"] .footerSourcesBadge--blue{
+      background: rgba(2,132,199,0.10);
+      border-color: rgba(2,132,199,0.35);
+      color: #0369a1;
+    }
+    :root[data-theme="clair"] .footerSourcesBadge--green{
+      background: rgba(4,120,87,0.10);
+      border-color: rgba(4,120,87,0.35);
+      color: #047857;
+    }
+    .footerSourcesLink{
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .footerSourcesLink:hover{ color: var(--accent); }
+    /* Versioning */
+    .footerVersion{
+      display: block;
+      margin-top: 10px;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      color: rgba(255,255,255,0.22);
+    }
+    :root[data-theme="clair"] .footerVersion{
+      color: rgba(0,0,0,0.30);
+    }
+    /* Modale sources */
+    .sourcesOverlay{
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.60);
+      z-index: 9000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .sourcesOverlay.is-open{ display: flex; }
+    .sourcesModal{
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 460px;
+      width: 100%;
+      padding: 24px;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    :root[data-theme="clair"] .sourcesModal{
+      background: #ffffff;
+    }
+    .sourcesModalClose{
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1;
+    }
+    .sourcesModalClose:hover{ color: var(--text); }
+    .sourcesModalTitle{
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 28px 4px 0;
+    }
+    .sourcesModalSub{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 16px;
+    }
+    .sourcesModalIntro{
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 14px;
+    }
+    .sourceCard{
+      border-radius: 12px;
+      border: 1px solid;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+    }
+    .sourceCard--blue{
+      background: rgba(56,189,248,0.08);
+      border-color: rgba(56,189,248,0.30);
+    }
+    .sourceCard--green{
+      background: rgba(52,211,153,0.08);
+      border-color: rgba(52,211,153,0.30);
+    }
+    .sourceCard--neutral{
+      background: var(--panel);
+      border-color: var(--border);
+    }
+    :root[data-theme="clair"] .sourceCard--blue{
+      background: rgba(2,132,199,0.07);
+      border-color: rgba(2,132,199,0.25);
+    }
+    :root[data-theme="clair"] .sourceCard--green{
+      background: rgba(4,120,87,0.07);
+      border-color: rgba(4,120,87,0.25);
+    }
+    .sourceCardName{
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 3px;
+    }
+    .sourceCardName--blue{ color: #7dd3fc; }
+    .sourceCardName--green{ color: #6ee7b7; }
+    .sourceCardName--neutral{ color: var(--text); }
+    :root[data-theme="clair"] .sourceCardName--blue{ color: #0369a1; }
+    :root[data-theme="clair"] .sourceCardName--green{ color: #047857; }
+    .sourceCardDesc{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0 0 7px;
+    }
+    .sourceCardLink{
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .sourceCardLink--blue{ color: #7dd3fc; }
+    .sourceCardLink--green{ color: #6ee7b7; }
+    .sourceCardLink--neutral{ color: var(--accent); }
+    :root[data-theme="clair"] .sourceCardLink--blue{ color: #0369a1; }
+    :root[data-theme="clair"] .sourceCardLink--green{ color: #047857; }
+    .sourcesModalFootnote{
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+      text-align: center;
+      margin: 4px 0 0;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
   
     header{
       max-width: 840px;  /* Aligné avec .wrap */
@@ -2173,7 +2363,28 @@
     <footer>
       <span class="footerDisclaimer" role="note">⚠️ Outil éducatif. Ne remplace pas un avis médical.<br>Toute décision thérapeutique doit être validée avec un professionnel de santé.</span>
       <span class="footerDisclaimer footerDisclaimerSchool" role="note">🏫 En contexte scolaire, cet outil doit être utilisé avec un adulte formé et selon le protocole établi avec l'équipe médicale.</span>
+      <div class="footerSources" role="note" aria-label="Sources des données nutritionnelles">
+        <span>Données issues de</span>
+        <button class="footerSourcesBadge footerSourcesBadge--blue" onclick="openSourcesModal()" aria-label="En savoir plus sur la source CIQUAL ANSES">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="5" stroke="currentColor" stroke-width="1"/><text x="5.5" y="8.2" text-anchor="middle" font-size="5.5" font-weight="700" fill="currentColor">FR</text></svg>
+          CIQUAL / ANSES
+        </button>
+        <button class="footerSourcesBadge footerSourcesBadge--green" onclick="openSourcesModal()" aria-label="En savoir plus sur les tables IG internationales">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="5" stroke="currentColor" stroke-width="1"/><text x="5.5" y="8.2" text-anchor="middle" font-size="5.5" font-weight="700" fill="currentColor">IG</text></svg>
+          Tables IG internationales
+        </button>
+        <button class="footerSourcesLink" onclick="openSourcesModal()">En savoir plus →</button>
+      </div>
       Tout reste sur ton appareil. Le thème et le mode simple sont enregistrés en local.
+      <span id="appVersion" class="footerVersion"></span>
+      <script>
+        /* VERSION — modifier number, date et label à chaque mise à jour */
+        (function() {
+          var v = { number:'2.1.1', date:'2026-03-12', label:'v2.1.1 — 12 mars 2026' };
+          window.APP_VERSION = v;
+          document.getElementById('appVersion').textContent = v.label;
+        })();
+      </script>
     </footer>
   </main>
 </div>
@@ -3482,16 +3693,16 @@
   8. simple-mode-*     — SimpleModeData + SimpleModeWizard
   9. app.js en dernier — instancie FoodSearchUI et SimpleModeWizard une seule fois
 -->
-<script src="storage.js?v=2.1"></script>
-<script src="bolusMath.js?v=2.1"></script>
-<script src="units.js?v=2.1"></script>
-<script src="notifications.js?v=2.1"></script>
-<script src="food-database.js?v=3.0"></script>
-<script src="bolus-optimizer.js?v=2.1"></script>
-<script src="food-search-ui.js?v=3.0"></script>
-<script src="simple-mode-data.js?v=3.0"></script>
-<script src="simple-mode-wizard.js?v=3.0"></script>
-<script src="app.js?v=2.1"></script>
+<script src="assets/js/storage.js?v=2.1"></script>
+<script src="assets/js/bolusMath.js?v=2.1"></script>
+<script src="assets/js/units.js?v=2.1"></script>
+<script src="assets/js/notifications.js?v=2.1"></script>
+<script src="assets/js/food-database.js?v=3.0"></script>
+<script src="assets/js/bolus-optimizer.js?v=2.1"></script>
+<script src="assets/js/food-search-ui.js?v=3.0"></script>
+<script src="assets/js/simple-mode-data.js?v=3.0"></script>
+<script src="assets/js/simple-mode-wizard.js?v=3.0"></script>
+<script src="assets/js/app.js?v=2.1"></script>
 
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -3742,6 +3953,70 @@
   });
 
 })();
+</script>
+
+<!-- ======= MODALE SOURCES DE DONNÉES ======= -->
+<div id="sourcesOverlay" class="sourcesOverlay" role="dialog" aria-modal="true" aria-labelledby="sourcesModalTitle">
+  <div class="sourcesModal">
+    <button class="sourcesModalClose" onclick="closeSourcesModal()" aria-label="Fermer">✕</button>
+
+    <p class="sourcesModalTitle" id="sourcesModalTitle">D'où viennent nos données ?</p>
+    <p class="sourcesModalSub">395 aliments issus de sources scientifiques reconnues</p>
+
+    <p class="sourcesModalIntro">
+      Pour que tes calculs soient fiables, on s'appuie uniquement sur des bases de données officielles et validées par des scientifiques. Voici lesquelles 👇
+    </p>
+
+    <!-- CIQUAL -->
+    <div class="sourceCard sourceCard--blue">
+      <p class="sourceCardName sourceCardName--blue">Table CIQUAL 2020 — ANSES</p>
+      <p class="sourceCardDesc">Glucides pour 100 g · Référence officielle française publiée par l'Agence nationale de sécurité sanitaire de l'alimentation (établissement public)</p>
+      <a href="https://ciqual.anses.fr" target="_blank" rel="noopener noreferrer" class="sourceCardLink sourceCardLink--blue">ciqual.anses.fr →</a>
+    </div>
+
+    <!-- Tables IG internationales -->
+    <div class="sourceCard sourceCard--green">
+      <p class="sourceCardName sourceCardName--green">International Tables of Glycemic Index</p>
+      <p class="sourceCardDesc">Index glycémique · Brand-Miller &amp; Jenkins · Référence mondiale publiée dans la revue scientifique <em>Diabetes Care</em></p>
+      <a href="https://glycemicindex.com" target="_blank" rel="noopener noreferrer" class="sourceCardLink sourceCardLink--green">glycemicindex.com →</a>
+    </div>
+
+    <!-- Montignac -->
+    <div class="sourceCard sourceCard--neutral">
+      <p class="sourceCardName sourceCardName--neutral">Méthode Montignac — Index Glycémique</p>
+      <p class="sourceCardDesc">Source complémentaire · IG des aliments typiques du contexte alimentaire français et méditerranéen</p>
+      <a href="https://www.montignac.com/fr/index-glycemique" target="_blank" rel="noopener noreferrer" class="sourceCardLink sourceCardLink--neutral">montignac.com →</a>
+    </div>
+
+    <p class="sourcesModalFootnote">
+      Les valeurs d'index glycémique peuvent varier selon la cuisson, la variété et la maturité des aliments.<br>AC Bolus est un outil éducatif — consulte toujours ton équipe médicale.
+    </p>
+  </div>
+</div>
+
+<script>
+function openSourcesModal() {
+  const overlay = document.getElementById('sourcesOverlay');
+  if (!overlay) return;
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSourcesModal() {
+  const overlay = document.getElementById('sourcesOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('is-open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('sourcesOverlay');
+  if (!overlay) return;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeSourcesModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSourcesModal();
+  });
+});
 </script>
 
 </body>

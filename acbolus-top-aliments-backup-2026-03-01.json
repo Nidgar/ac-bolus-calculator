@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "app": "AC Bolus",
+    "type": "selection_counts_backup",
+    "version": "1.0",
+    "date": "2026-03-01T22:14:31.647Z",
+    "total_selections": 10,
+    "nb_aliments": 8
+  },
+  "counts": {
+    "eau": 2,
+    "yaourt_fruits": 1,
+    "flan": 2,
+    "creme_dessert": 1,
+    "pain_complet": 1,
+    "carottes_rapees": 1,
+    "pizza_4_fromages": 1,
+    "compote": 1
+  }
+}

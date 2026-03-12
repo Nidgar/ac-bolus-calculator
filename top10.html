@@ -746,9 +746,9 @@ async function loadDB() {
   // Garantit le bon chemin sur GitHub Pages, file://, et tout sous-dossier
   let url;
   try {
-    url = new URL('aliments-index.json', location.href).href;
+    url = new URL('assets/data/aliments-index.json', location.href).href;
   } catch(_) {
-    url = './aliments-index.json';
+    url = './assets/data/aliments-index.json';
   }
   // Cache-busting aligné sur la version de la BDD
   url += (url.includes('?') ? '&' : '?') + 'v=3.3';

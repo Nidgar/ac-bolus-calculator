@@ -19,47 +19,73 @@ Application web standalone (HTML/CSS/JS vanilla) pour calculer les doses d'insul
 
 ### Technologies
 - **Frontend** : HTML5, CSS3, JavaScript Vanilla (ES6+)
-- **Stockage** : LocalStorage (ratios, préférences)
-- **Base de données** : JSON statique (78 aliments)
+- **Stockage** : LocalStorage via module `AppStorage` (ratios, préférences)
+- **Base de données** : JSON statique (344 aliments, 12 catégories)
 - **Aucune dépendance externe** : Pas de framework, pas de build step
 
 ---
 
 ## 📁 STRUCTURE DU PROJET
 
-### Fichiers principaux (production)
+### Arborescence complète
+
 ```
-📦 AC Bolus/
-├── 🎯 calculateur-bolus-final.html    # Application principale (51KB)
-├── 🗄️ aliments-index.json             # Base de données (78 aliments, 26KB)
-├── 🧠 food-database.js                # Module recherche (6.7KB)
-├── 🎨 food-search-ui.js               # Module interface (11KB)
-├── 🔧 bolus-optimizer.js              # Module optimisation (9KB)
-├── 🖼️ favicon-96.png                  # Logo AC BOLUS (5.7KB)
-├── 📱 manifest.json                   # Configuration PWA
-└── 🎨 icon-*.png                      # Icônes PWA (8 fichiers)
+📦 ac-bolus/
+│
+├── 📄 calculateur-bolus-final.html    # Application principale (~120KB)
+├── 📄 manifest.json                   # Configuration PWA (reste à la racine — standard)
+├── 📄 top10.html                      # Page Top aliments (easter egg 🏆)
+├── 📄 403.html                        # Page erreur 403 (easter egg 🚫)
+├── 📄 404.html                        # Page erreur 404 (easter egg 🔍)
+├── 📄 CLAUDE.md                       # Ce fichier
+│
+├── 📁 assets/
+│   │
+│   ├── 📁 js/                         # Modules JS — ordre de chargement impératif
+│   │   ├── 1️⃣  storage.js             # AppStorage v1.0 — LocalStorage unifié
+│   │   ├── 2️⃣  bolusMath.js           # BolusMath v1.0 — Calculs purs (ICR/FSI)
+│   │   ├── 3️⃣  units.js               # GlyUnits v1.0 — Conversion mg/dL ↔ g/L
+│   │   ├── 4️⃣  notifications.js       # Notify v1.0 — Notifications centralisées
+│   │   ├── 5️⃣  food-database.js       # FoodDatabase — Module recherche (~19KB)
+│   │   ├── 6️⃣  bolus-optimizer.js     # BolusOptimizer — Optimisation IG/CG (~11KB)
+│   │   ├── 7️⃣  food-search-ui.js      # FoodSearchUI — Module interface (~25KB)
+│   │   ├── 8️⃣  simple-mode-data.js    # SimpleModeDataBuilder v3.7 — Données wizard
+│   │   ├── 9️⃣  simple-mode-wizard.js  # SimpleModeWizard v2.1 — Logique wizard
+│   │   └── 🔟  app.js                 # Bootstrap unique v1.3.0 (toujours en dernier)
+│   │
+│   ├── 📁 data/                       # Données statiques
+│   │   └── 📄 aliments-index.json     # Base de données (344 aliments, v3.4)
+│   │
+│   └── 📁 img/                        # Icônes & favicons PWA
+│       ├── 🖼️ favicon-32.png
+│       ├── 🖼️ favicon-48.png
+│       ├── 🖼️ favicon-96.png          # Logo affiché dans le header
+│       ├── 🖼️ icon-192.png
+│       ├── 🖼️ icon-192-maskable.png
+│       ├── 🖼️ icon-512.png
+│       └── 🖼️ icon-512-maskable.png
+│
+└── 📁 tests/                          # Tests & QA
+    ├── 🧪 test-runner.html            # Lanceur de tests (navigateur)
+    ├── 🧪 tests.js                    # Suite de tests unitaires
+    ├── 🧪 tests-cas-cliniques.js      # Tests cas cliniques
+    ├── ✅ qa-full.js                  # QA complet aliments-index.json
+    └── ✅ qa-alias-check.js           # Vérification collisions d'alias
 ```
 
-### Fichiers de test
-```
-📁 tests/
-├── test-food-database.html            # Test module DB
-├── test-bolus-optimizer.html          # Test module optimisation
-├── test-search.html                   # Test recherche
-├── test-minimal.html                  # Test minimal
-└── test-all-in-one.html               # Test intégration
-```
+> ⚠️ **Ordre de chargement impératif** : Les modules sont chargés dans l'ordre 1→10 en bas du `<body>`. `app.js` doit toujours être en dernier — c'est lui qui orchestre l'initialisation de tous les modules.
 
-### Documentation
-```
-📁 docs/
-├── README.md                          # Documentation principale
-├── GUIDE-TEST-COMPLET.md             # Tests détaillés (11 tests)
-├── TEST-RAPIDE.md                    # Test rapide (5 min)
-├── INTEGRATION-ETAPE3.md             # Doc technique
-├── VERSION-2_0-PROPRE.md             # Notes version
-└── AMELIORATIONS-V1_1.md             # Changelog
-```
+### Règles de chemins
+
+| Depuis | Vers les JS | Vers les données | Vers les images |
+|---|---|---|---|
+| `calculateur-bolus-final.html` | `assets/js/module.js` | `assets/data/aliments-index.json` | `assets/img/favicon-96.png` |
+| `top10.html` | — | `assets/data/aliments-index.json` | — |
+| `403.html` / `404.html` | — | — | `assets/img/favicon-32.png` |
+| `tests/test-runner.html` | `../assets/js/module.js` | — | — |
+| `tests/qa-full.js` (Node) | — | `../assets/data/aliments-index.json` | — |
+
+> ℹ️ `manifest.json` reste à la racine — obligation du standard PWA (les navigateurs le cherchent au même niveau que le HTML principal).
 
 ---
 
@@ -75,25 +101,55 @@ python -m http.server 8000  # Serveur local pour tests
 
 ### Tests
 ```bash
-# Tests manuels (navigateur)
+# Tests navigateur
+1. Ouvrir test-runner.html
+2. F12 → Console
+3. Vérifier les résultats de la suite tests.js
+
+# Vérification chargement DB
 1. Ouvrir calculateur-bolus-final.html
 2. F12 → Console
-3. Vérifier : "✅ 78 aliments chargés"
+3. Vérifier : "✅ 344 aliments chargés"
+```
 
-# Tests modules individuels
-1. Ouvrir test-food-database.html
-2. Vérifier console pour résultats
+### QA base de données
+```bash
+# Depuis le dossier tests/ (chemin par défaut automatique)
+node tests/qa-full.js
+node tests/qa-alias-check.js
+
+# Ou avec chemin explicite depuis la racine du projet
+node tests/qa-full.js assets/data/aliments-index.json
+
+# Checks effectués :
+#   ✅ IDs uniques dans toute la base
+#   ✅ Champs obligatoires (id, nom, glucides, ig, portion_usuelle)
+#   ✅ Types JS corrects pour chaque champ
+#   ✅ glucides borné [0–100], ig [0–100] ou null
+#   ✅ portion.unite ∈ { 'g', 'ml' }
+#   ✅ portion.quantite > 0
+#   ✅ ig=null réservé aux aliments non-glucidiques (glucides ≤ 1)
+#   ✅ Collisions alias (ERREUR si alias = id dédié, ⚠️ si générique)
+
+# Exit codes :
+#   0 → base propre (prête au déploiement)
+#   1 → erreur(s) bloquante(s) à corriger
+
+# À lancer OBLIGATOIREMENT :
+#   - avant tout déploiement
+#   - après ajout ou modification d'un aliment
+#   - après fusion de branches (futur CI)
 ```
 
 ### Déploiement
 ```bash
-# PWA : Copier tous les fichiers sur serveur HTTPS
-scp calculateur-bolus-final.html user@server:/var/www/
-scp *.js user@server:/var/www/
-scp aliments-index.json user@server:/var/www/
-scp favicon-96.png user@server:/var/www/
-scp manifest.json user@server:/var/www/
-scp icon-*.png user@server:/var/www/
+# PWA : Copier toute l'arborescence sur serveur HTTPS
+# Structure obligatoire à respecter sur le serveur :
+scp calculateur-bolus-final.html  user@server:/var/www/acbolus/
+scp manifest.json                 user@server:/var/www/acbolus/
+scp top10.html 403.html 404.html  user@server:/var/www/acbolus/
+scp -r assets/                    user@server:/var/www/acbolus/
+# NB : ne pas copier le dossier tests/ en production
 ```
 
 ---
@@ -138,6 +194,7 @@ scp icon-*.png user@server:/var/www/
 // Classes : PascalCase
 class FoodDatabase { }
 class BolusOptimizer { }
+class SimpleModeWizard { }
 
 // Fonctions : camelCase
 function calculateBolus() { }
@@ -173,7 +230,7 @@ class ModuleName {
   }
 }
 
-// Export global
+// Export global (pas d'ES modules pour compatibilité maximale)
 if (typeof window !== 'undefined') {
   window.ModuleName = ModuleName;
 }
@@ -217,42 +274,50 @@ console.error('❌ Erreur');
 
 ## 🗄️ STRUCTURE DES DONNÉES
 
-### Aliments (JSON)
+### Base aliments (aliments-index.json v3.4)
+
+**12 catégories, 344 aliments :**
+
+| Catégorie            | ID                   | Aliments |
+|----------------------|----------------------|----------|
+| Pain & Céréales      | pain_cereales        | 30       |
+| Féculents            | feculents            | 32       |
+| Légumineuses         | legumineuses         | 13       |
+| Fruits               | fruits               | 23       |
+| Légumes              | legumes              | 29       |
+| Protéines            | proteines            | 41       |
+| Produits laitiers    | produits_laitiers    | 33       |
+| Desserts & sucreries | desserts_sucreries   | 51       |
+| Boissons             | boissons             | 27       |
+| Plats préparés       | plats_prepares       | 26       |
+| Sauces & condiments  | sauces_condiments    | 18       |
+| Entrées froides      | entrees_froides      | 21       |
+
+**Structure d'un aliment :**
 ```json
 {
-  "version": "2.0",
-  "date": "2026-02-15",
-  "categories": [
-    {
-      "id": "pain_cereales",
-      "nom": "Pain & Céréales",
-      "icon": "🍞",
-      "aliments": [
-        {
-          "id": "pain_blanc",
-          "nom": "Pain blanc",
-          "synonymes": ["baguette", "pain"],
-          "glucides": 55,
-          "ig": 70,
-          "cg": 38.5,
-          "portion_usuelle": {
-            "quantite": 50,
-            "unite": "g",
-            "description": "2 tranches"
-          }
-        }
-      ]
-    }
-  ]
+  "id": "pain_blanc",
+  "nom": "Pain blanc",
+  "synonymes": ["baguette", "pain"],
+  "glucides": 55,
+  "ig": 70,
+  "portion_usuelle": {
+    "quantite": 50,
+    "unite": "g",
+    "description": "2 tranches"
+  }
 }
 ```
 
-### LocalStorage
+> ⚠️ **Champ `cg` supprimé** (Issue P0 résolue) — la charge glycémique est calculée dynamiquement.
+
+### LocalStorage via AppStorage
 ```javascript
 // Clés utilisées
 'bc_theme_v1'      // Thème (clair/sombre)
 'bc_simple_v1'     // Mode simple (true/false)
 'bc_ratios_v1'     // Ratios insuline (JSON)
+'bc_unit_v1'       // Unité glycémie (mg/dL ou g/L)
 
 // Structure ratios
 {
@@ -261,14 +326,24 @@ console.error('❌ Erreur');
   objectif: 110,
   timestamp: 1708012345678
 }
+
+// API AppStorage (module storage.js)
+AppStorage.get(key, { maxAge?, schemaVersion? })   // → valeur | null
+AppStorage.set(key, value, { ttl?, schemaVersion? }) // → true | false
+AppStorage.clear(key)                               // → void
 ```
 
 ---
 
 ## 🧮 FORMULES ET ALGORITHMES
 
-### Calcul de bolus standard
+### Calcul de bolus (BolusMath v1.0)
 ```javascript
+// Règle des 500/1800 (méthode DiabetesNet / Walsh)
+const DTQ  = basale + rapide;
+const ICR  = 500  / DTQ;   // g de glucides couverts par 1 U
+const FSI  = 1800 / DTQ;   // mg/dL abaissés par 1 U
+
 // Correction
 const correction = (glycemie - objectif) / FSI;
 
@@ -277,9 +352,11 @@ const repas = glucides / ICR;
 
 // Total
 const bolusTotal = correction + repas;
+
+// ⚠️ Sécurité : BolusMath retourne NaN (pas 0) en cas d'entrée invalide
 ```
 
-### Optimisation IG/CG
+### Optimisation IG/CG (BolusOptimizer)
 ```javascript
 // Facteur IG : 1 + ((IG - 55) × 0.005)
 const facteurIG = 1 + ((igMoyen - 55) * 0.005);
@@ -307,6 +384,17 @@ const bolusOptimise = bolusStandard * facteurIG * facteurCG;
  */
 ```
 
+### Conversion unités glycémie (GlyUnits v1.0)
+```javascript
+// L'app fonctionne en mg/dL nativement
+// 1 g/L   = 100 mg/dL
+// 1 mmol/L = 18.016 mg/dL (glucose, M = 180.16 g/mol)
+GlyUnits.toMgdl(value, unit)   // → number en mg/dL
+GlyUnits.fromMgdl(value, unit) // → number dans l'unité cible
+GlyUnits.parse(str)            // → number (accepte virgule et point)
+GlyUnits.format(value, unit)   // → string formaté
+```
+
 ---
 
 ## 🎨 DESIGN PATTERNS
@@ -319,21 +407,41 @@ const bolusOptimise = bolusStandard * facteurIG * facteurCG;
 ├─────────────────────────────────┤
 │  - Interface utilisateur (HTML) │
 │  - Styles (CSS inline)          │
-│  - Logique métier (JS inline)   │
+│  - Logique métier (inline)      │
 └─────────────────────────────────┘
-         ↓ imports
+         ↓ imports (ordre 1→10)
 ┌─────────────────────────────────┐
 │    Modules JavaScript (ES6)     │
 ├─────────────────────────────────┤
-│  • FoodDatabase                 │
-│  • BolusOptimizer               │
-│  • FoodSearchUI                 │
+│  • AppStorage   (stockage)      │
+│  • BolusMath    (calculs)       │
+│  • GlyUnits     (unités)        │
+│  • Notify       (notifications) │
+│  • FoodDatabase (base aliments) │
+│  • BolusOptimizer (IG/CG)       │
+│  • FoodSearchUI (interface)     │
+│  • SimpleModeDataBuilder        │
+│  • SimpleModeWizard             │
+│  • app.js       (bootstrap)     │
 └─────────────────────────────────┘
          ↓ loads
 ┌─────────────────────────────────┐
 │     aliments-index.json         │
-│     (Base de données)           │
+│  (344 aliments, 12 catégories)  │
 └─────────────────────────────────┘
+```
+
+### Bootstrap unique (app.js v1.3.0)
+```javascript
+// Garde-fou anti-double initialisation
+if (window.__acBolusBooted) return;
+window.__acBolusBooted = true;
+
+// Ordre d'init :
+// 1. FoodDatabase.load()           → fetch aliments-index.json
+// 2. SimpleModeDataBuilder.build() → peuple SimpleModeData depuis la BDD
+// 3. SimpleModeWizard.init()       → wizard initialisé après build()
+// 4. FoodSearchUI.init()           → init indépendante (async interne)
 ```
 
 ### Pattern Observer
@@ -345,54 +453,6 @@ window.addEventListener('mealValidated', (e) => {
 });
 ```
 
-### Pattern Module
-```javascript
-// Chaque module est une classe exportée globalement
-// Pas d'ES modules pour compatibilité maximale
-window.FoodDatabase = FoodDatabase;
-```
-
----
-
-## 🧪 TESTING
-
-### Tests manuels (Guide)
-```bash
-# Test complet (30 min)
-1. Ouvrir GUIDE-TEST-COMPLET.md
-2. Suivre les 11 tests
-3. Cocher chaque vérification
-
-# Test rapide (5 min)
-1. Ouvrir TEST-RAPIDE.md
-2. Tests essentiels uniquement
-```
-
-### QA automatique (aliments-index.json)
-```bash
-# Script principal — valide TOUT (ids, types, bornes, unités, alias)
-node qa-full.js [aliments-index.json]
-
-# Checks effectués :
-#   ✅ IDs uniques dans toute la base
-#   ✅ Champs obligatoires (id, nom, glucides, ig, portion_usuelle)
-#   ✅ Types JS corrects pour chaque champ
-#   ✅ glucides borné [0–100], ig [0–100] ou null
-#   ✅ portion.unite ∈ { 'g', 'ml' }
-#   ✅ portion.quantite > 0
-#   ✅ ig=null réservé aux aliments non-glucidiques (glucides ≤ 1)
-#   ✅ Collisions alias (ERREUR si alias = id dédié, ⚠️ si générique)
-
-# Exit codes :
-#   0 → base propre (prête au déploiement)
-#   1 → erreur(s) bloquante(s) à corriger
-
-# À lancer OBLIGATOIREMENT :
-#   - avant tout déploiement
-#   - après ajout ou modification d'un aliment
-#   - après fusion de branches (futur CI)
-```
-
 ### Politique des alias génériques acceptés
 Les alias suivants retournent intentionnellement plusieurs aliments
 (comportement de recherche voulu, documenté dans `aliments-index.json#qa`) :
@@ -400,20 +460,37 @@ Les alias suivants retournent intentionnellement plusieurs aliments
 - `"chocolat"` → chocolat noir + chocolat au lait
 - `"poisson"` → saumon + thon
 
-### Tests automatisés (futurs)
-```javascript
-// TODO : Ajouter Jest ou similaire pour :
-// - Tests unitaires des modules
-// - Tests d'intégration
-// - Tests de performance (< 50ms chargement DB)
+---
+
+## 🧪 TESTING
+
+### Suite de tests (tests.js + test-runner.html)
+```bash
+# Ouvrir test-runner.html dans un navigateur
+# Pas de serveur HTTP requis (file://)
+# Les tests passent sans fetch (modules inline)
+```
+
+### QA automatique
+```bash
+node qa-full.js [aliments-index.json]   # Validation complète
+node qa-alias-check.js                  # Vérification alias uniquement
+```
+
+### Tests manuels essentiels
+```bash
+# 5 minutes
+1. Ouvrir calculateur-bolus-final.html
+2. Console : "✅ 344 aliments chargés"
+3. Rechercher "pomme" → résultats
+4. Calculer un bolus (valeurs connues)
+5. Vérifier mode simple/initié
 ```
 
 ### Debug
 ```javascript
 // Mode debug intégré
 localStorage.setItem('debug', 'true');
-
-// Logs détaillés dans console
 console.log('🔍 Mode debug activé');
 ```
 
@@ -423,7 +500,7 @@ console.log('🔍 Mode debug activé');
 
 ### Ajouter un aliment
 ```json
-// Dans aliments-index.json
+// Dans aliments-index.json — respecter la structure :
 {
   "id": "nouvel_aliment",
   "nom": "Nom de l'aliment",
@@ -436,8 +513,17 @@ console.log('🔍 Mode debug activé');
     "description": "1 portion"
   }
 }
-// ⚠️ Champ "cg" supprimé (Issue P0) — calculé dynamiquement
+// ⚠️ Pas de champ "cg" — calculé dynamiquement
+// ⚠️ ig: null uniquement si glucides ≤ 1 (aliment non glucidique)
 // ⚠️ Lancer "node qa-full.js" après tout ajout
+```
+
+### Ajouter un aliment au wizard
+```javascript
+// Dans simple-mode-data.js → SimpleModeDataBuilder
+// Mapper le nouvel id vers l'étape/sous-étape appropriée
+// Exemples d'exclusions volontaires (ingrédients cuisine) :
+// galette_riz, chapelure, ble_precuit → pas dans le wizard
 ```
 
 ### Modifier un calcul
@@ -448,6 +534,10 @@ this.config = {
   ig_reference: 55,
   // ...
 };
+
+// ⚠️ Pour modifier ICR/FSI : éditer les constantes dans bolusMath.js
+// const ICR_CONSTANT = 500;
+// const FSI_CONSTANT = 1800;
 ```
 
 ### Changer un style
@@ -489,7 +579,7 @@ this.config = {
 
 ### Sécurité
 - ✅ Aucune donnée envoyée sur internet
-- ✅ Tout en localStorage (local)
+- ✅ Tout en localStorage via AppStorage (local)
 - ⚠️ Avertissement médical obligatoire
 - ⚠️ Ne remplace pas l'avis médical
 
@@ -521,15 +611,19 @@ this.config = {
 
 ### Recherche ne fonctionne pas
 **Cause** : aliments-index.json non chargé
-**Solution** : Vérifier console (F12), fichier présent ?
+**Solution** : Vérifier console (F12), fichier présent ? Chemin relatif correct ?
 
 ### Bolus négatif affiché
 **Cause** : Glycémie < objectif avec glucides faibles
-**Solution** : Normal, mais ajouter validation UI
+**Solution** : Normal mathématiquement — validation UI à améliorer (TODO)
 
 ### Sphère IG reste jaune (≥70 devrait être rouge)
 **Cause** : Script de coloration automatique
 **Solution** : Appeler `testColorerBlocIG()` en console
+
+### Double initialisation des modules
+**Cause** : `app.js` chargé deux fois
+**Solution** : Le garde-fou `window.__acBolusBooted` bloque la deuxième exécution. Vérifier qu'`app.js` n'est inclus qu'une fois dans le HTML.
 
 ---
 
@@ -574,20 +668,26 @@ test(optimizer): ajout tests unitaires
 
 ## 🎯 ROADMAP
 
-### v2.0 (en cours)
+### v2.0 (livré)
 - [x] Mode simple/initié
-- [x] Recherche aliments (78)
+- [x] Recherche aliments
 - [x] Optimisation IG/CG
 - [x] PWA avec icônes
 - [x] Coloration dynamique bloc IG
-- [ ] Mode wizard repas (en cours)
+
+### v2.1 (en cours)
+- [x] Mode wizard repas (SimpleModeWizard v2.1)
+- [x] Modules refactorisés (AppStorage, BolusMath, GlyUnits, Notify)
+- [x] Bootstrap unique app.js
+- [x] Base aliments étendue : 344 aliments, 12 catégories
+- [x] Audit complet aliments mappés dans le wizard
 - [ ] Historique repas favoris
 
-### v2.1 (planifié)
-- [ ] Plus d'aliments (150+)
+### v2.2 (planifié)
 - [ ] Scan code-barres
 - [ ] Export données (CSV)
 - [ ] Graphiques glycémie
+- [ ] Tests Jest (unitaires + intégration)
 
 ### v3.0 (futur)
 - [ ] Apprentissage personnalisé
@@ -605,6 +705,8 @@ test(optimizer): ajout tests unitaires
 - ✅ JSDoc pour API publiques
 - ✅ Console avec emojis
 - ✅ Gestion d'erreurs complète
+- ✅ Modules auto-protégés (pas d'auto-instanciation)
+- ✅ Bootstrap unique centralisé (app.js)
 
 ### UI/UX
 - ✅ Feedback visuel immédiat
@@ -615,9 +717,10 @@ test(optimizer): ajout tests unitaires
 
 ### Architecture
 - ✅ Séparation des concerns (modules)
-- ✅ Single file pour simplicité
+- ✅ Single file pour simplicité (calculateur-bolus-final.html)
 - ✅ Pas de build step
 - ✅ Tout en local (offline-ready)
+- ✅ Ordre de chargement documenté et respecté
 
 ---
 
@@ -628,13 +731,13 @@ test(optimizer): ajout tests unitaires
 2. ✅ **Toujours** ajouter des commentaires explicatifs
 3. ✅ **Toujours** utiliser des emojis dans les console.log
 4. ✅ **Toujours** tester mentalement la compatibilité navigateur
-5. ✅ **Toujours** préserver l'architecture modulaire
+5. ✅ **Toujours** préserver l'architecture modulaire et l'ordre de chargement
 
 ### Lors d'ajout de fonctionnalités :
 1. ✅ Vérifier cohérence avec l'existant
-2. ✅ Documenter dans un fichier MD séparé
-3. ✅ Mettre à jour CLAUDE.md si nécessaire
-4. ✅ Prévoir un test manuel
+2. ✅ Mettre à jour CLAUDE.md si nécessaire
+3. ✅ Prévoir un test manuel
+4. ✅ Si ajout aliment : lancer `node qa-full.js` ensuite
 
 ### Lors de corrections de bugs :
 1. ✅ Identifier la cause racine
@@ -642,19 +745,48 @@ test(optimizer): ajout tests unitaires
 3. ✅ Documenter le bug et la solution
 4. ✅ Ajouter dans section "Bugs connus" si récurrent
 
+### Rappels critiques :
+- ⚠️ Ne jamais auto-instancier les modules — `app.js` s'en charge
+- ⚠️ Ne jamais toucher directement `localStorage` — passer par `AppStorage`
+- ⚠️ Ne jamais mettre de champ `cg` dans aliments-index.json — calculé dynamiquement
+- ⚠️ Toujours valider avec `node qa-full.js` avant déploiement
+
 ---
 
 ## 📝 CHANGELOG RÉCENT
+
+### 2026-03-12 (aujourd'hui)
+- ✅ Réorganisation complète de l'arborescence (nouvelle structure standard)
+  - `assets/js/` — tous les modules JS
+  - `assets/data/` — aliments-index.json
+  - `assets/img/` — icônes et favicons (noms avec tirets : `favicon-96.png`, etc.)
+  - `tests/` — test-runner.html, tests.js, tests-cas-cliniques.js, qa-*.js
+  - Racine : HTML principaux + manifest.json + CLAUDE.md uniquement
+- ✅ Correction de tous les chemins impactés (calculateur-bolus-final.html, food-database.js, top10.html, test-runner.html, qa-full.js, qa-alias-check.js, 403.html, 404.html)
+- ✅ Easter eggs préservés (long press ⚙️ → tests/, swipe → index secret)
+- ✅ Mise à jour CLAUDE.md v3.0.0
+
+### 2026-03-10
+- ✅ Mise à jour CLAUDE.md v2.0.0
+
+### 2026-03-04
+- ✅ aliments-index.json v3.4 — 344 aliments, 12 catégories
+
+### 2026-03-01
+- ✅ app.js v1.3.0 — Bootstrap unique, SimpleModeDataBuilder.build() après FoodDatabase.load()
+- ✅ simple-mode-data.js v3.7 — Audit complet : tous les aliments BDD mappés dans le wizard
+- ✅ simple-mode-data.js v3.6 — Nouvelles catégories wizard (plats_chauds, pâtisseries, légumineuses)
+- ✅ simple-mode-data.js v3.5 — Intégration entrees_froides dans le wizard
 
 ### 2026-02-23
 - ✅ Ajout logo AC BOLUS (favicon-96.png)
 - ✅ Coloration dynamique bloc IG (vert/jaune/rouge)
 - ✅ Correction sphère IG après chiffre
 - ✅ Configuration PWA complète (manifest.json + icônes)
-- ✅ Création CLAUDE.md (ce fichier)
+- ✅ Création CLAUDE.md v1.0.0
 
 ### 2026-02-15
-- ✅ Version 2.0 avec 78 aliments
+- ✅ Version 2.0 initiale
 - ✅ Modules search + optimizer
 - ✅ Mode simple/initié
 - ✅ Tests complets
@@ -670,11 +802,12 @@ Ce projet est un **calculateur de bolus éducatif** pour adolescents diabétique
 - 🎨 **Design** : Interface ludique et claire
 - 📱 **Mobile-first** : Responsive et PWA
 - 🧠 **Intelligence** : Optimisation IG/CG
+- 🧩 **Modularité** : Modules indépendants, bootstrap centralisé
 
 **Priorité absolue** : Sécurité médicale et clarté des calculs.
 
 ---
 
-*Dernière mise à jour : 2026-02-23*
-*Version CLAUDE.md : 1.0.0*
+*Dernière mise à jour : 2026-03-12*
+*Version CLAUDE.md : 3.0.0*
 *Maintenu par : Claude (Anthropic)*
